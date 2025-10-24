@@ -1,159 +1,291 @@
-# APP-moviles-Anime 🎌
+# AnimeVerse 🎌 📸
 
-Aplicación móvil para una comunidad de fans de anime, manga y gaming, inspirada en el patrón de arquitectura de **UINavegacion**.
+Aplicación móvil para una comunidad de fans de anime, manga y gaming **con captura de fotos**.
 
-## 📊 Base de Datos
+## ✅ Proyecto Android Completo
 
-Esta aplicación utiliza **Room Database** para el almacenamiento local de datos siguiendo el patrón modular de entidades y DAOs.
+Combina:
+- 🗄️ **Base de datos Room** de AnimeVerse
+- 📸 **Funcionalidad de cámara** del proyecto UINavegacion
 
-### ✨ Características de la Base de Datos:
+## 📱 Características Principales
 
-- ✅ **Sistema Completo de Usuarios** con roles (Admin, Usuario, Moderador) y estados
-- ✅ **Sistema Simple de Usuarios** para implementaciones básicas
-- ✅ **Publicaciones** con categorías (Anime, Manga, Gaming, General)
-- ✅ **Comentarios** en publicaciones
-- ✅ **Calificaciones** con sistema de estrellas (1-5)
-- ✅ **Sistema de Moderación** con baneos temporales y permanentes
-- ✅ **Datos de Ejemplo** precargados automáticamente
-- ✅ **Arquitectura Modular** con entidades y DAOs organizados por módulo
+### 📸 Captura de Fotos
+- ✅ Abrir cámara del dispositivo
+- ✅ Tomar foto y visualizarla
+- ✅ Eliminar foto con confirmación
+- ✅ Almacenamiento temporal en cache
 
-## 🏗️ Estructura del Proyecto
+### 🗄️ Base de Datos Room
+- ✅ 10 entidades (Usuario, Post, Comentario, etc.)
+- ✅ Sistema completo y simple de usuarios
+- ✅ Publicaciones con categorías
+- ✅ Datos de ejemplo precargados
 
-Siguiendo el patrón de **UINavegacion_camara**:
+### 🎨 Interfaz Material 3
+- ✅ Diseño moderno con Jetpack Compose
+- ✅ Tema personalizado (modo claro/oscuro)
+- ✅ Cards de publicaciones
+- ✅ Paleta de colores anime
+
+## 📁 Estructura del Proyecto
 
 ```
-data/
-├── local/
-│   ├── database/         # AppDatabase - Configuración principal
-│   ├── rol/             # RolEntity + RolDao
-│   ├── estado/          # EstadoEntity + EstadoDao
-│   ├── tema/            # TemaEntity + TemaDao
-│   ├── usuario/         # UsuarioEntity + UsuarioDao (sistema completo)
-│   ├── publicacion/     # PublicacionEntity + PublicacionDao
-│   ├── comentario/      # ComentarioEntity + ComentarioDao
-│   ├── calificacion/    # CalificacionEntity + CalificacionDao
-│   ├── hora_baneo/      # HoraBaneoEntity + HoraBaneoDao
-│   ├── user/            # UserEntity + UserDao (sistema simple)
-│   └── post/            # PostEntity + PostDao (sistema simple)
-├── repository/          # AnimeVerseRepository
-└── mock/               # Datos de ejemplo para testing
+APP-moviles-Anime/
+├── app/
+│   ├── src/main/
+│   │   ├── java/com/example/animeverse/
+│   │   │   ├── data/              # Base de datos Room
+│   │   │   │   ├── local/
+│   │   │   │   ├── repository/
+│   │   │   │   └── mock/
+│   │   │   ├── ui/                # Interfaz Compose
+│   │   │   │   ├── screen/
+│   │   │   │   │   ├── LoginScreen.kt     ← Pantalla de login (INICIO)
+│   │   │   │   │   ├── RegisterScreen.kt  ← Pantalla de registro
+│   │   │   │   │   └── HomeScreen.kt      ← Pantalla con cámara
+│   │   │   │   └── theme/
+│   │   │   └── MainActivity.kt    ← Navegación entre pantallas
+│   │   ├── res/
+│   │   │   ├── xml/
+│   │   │   │   ├── file_paths.xml        ← Config FileProvider
+│   │   │   │   ├── backup_rules.xml
+│   │   │   │   └── data_extraction_rules.xml
+│   │   │   └── values/
+│   │   └── AndroidManifest.xml    ← Permisos cámara
+│   └── build.gradle.kts           ← Dependencias
+├── build.gradle.kts
+├── settings.gradle.kts
+└── .gitignore
 ```
 
-### 📁 Ventajas de esta Estructura:
+## 🚀 Abrir el Proyecto
 
-✅ **Modularidad** - Cada entidad está en su propio módulo con su DAO  
-✅ **Mantenibilidad** - Fácil de encontrar y modificar código relacionado  
-✅ **Escalabilidad** - Agregar nuevas entidades es simple y organizado  
-✅ **Clean Architecture** - Separación clara de responsabilidades  
+### En Android Studio:
+1. **File → Open**
+2. Selecciona: `APP-moviles-Anime`
+3. Espera Gradle Sync
+4. **Run ▶️**
 
-## 🗄️ Entidades de la Base de Datos
-
-### Sistema Completo:
-1. **RolEntity** - Roles de usuario (Administrador, Usuario, Moderador)
-2. **EstadoEntity** - Estados (Activo, Inactivo, Baneado)
-3. **TemaEntity** - Categorías (Anime, Manga, Gaming, General)
-4. **UsuarioEntity** - Usuarios con sistema completo de roles y estados
-5. **PublicacionEntity** - Publicaciones con sistema de baneo
-6. **ComentarioEntity** - Comentarios en publicaciones
-7. **CalificacionEntity** - Sistema de calificaciones (1-5 estrellas)
-8. **HoraBaneoEntity** - Historial de baneos temporales
-
-### Sistema Simple:
-9. **UserEntity** - Usuarios básicos
-10. **PostEntity** - Publicaciones simples con likes y comentarios
-
-## 🛠️ Tecnologías
-
-- **Kotlin** - Lenguaje de programación
-- **Room Database** - Persistencia de datos local
-- **Coroutines** - Programación asíncrona
-- **Flow** - Streams reactivos para UI
-- **Jetpack Compose** (opcional) - UI moderna
-
-## 🚀 Cómo Usar
-
-### 1. Agregar dependencias en `build.gradle.kts`:
+## 📦 Dependencias Incluidas
 
 ```kotlin
-dependencies {
-    val room_version = "2.6.1"
-    
-    // Room
-    implementation("androidx.room:room-runtime:$room_version")
-    implementation("androidx.room:room-ktx:$room_version")
-    ksp("androidx.room:room-compiler:$room_version")
-    
-    // Coroutines
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
-}
+// Compose & Material 3
+implementation("androidx.compose.material3:material3")
+implementation("androidx.compose.material:material-icons-extended")
+
+// Room Database
+implementation("androidx.room:room-runtime:2.6.1")
+implementation("androidx.room:room-ktx:2.6.1")
+ksp("androidx.room:room-compiler:2.6.1")
+
+// Coil para imágenes
+implementation("io.coil-kt:coil-compose:2.5.0")  ← Para la cámara
+
+// Coroutines & ViewModel
+implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.7.0")
+implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
 ```
 
-### 2. Inicializar la base de datos:
+## 📱 Pantallas de la App
 
-```kotlin
-// En tu Application o Activity
-val database = AppDatabase.getInstance(context)
-val repository = AnimeVerseRepository(
-    rolDao = database.rolDao(),
-    estadoDao = database.estadoDao(),
-    temaDao = database.temaDao(),
-    usuarioDao = database.usuarioDao(),
-    publicacionDao = database.publicacionDao(),
-    comentarioDao = database.comentarioDao(),
-    calificacionDao = database.calificacionDao(),
-    horaBaneoDao = database.horaBaneoDao(),
-    userDao = database.userDao(),
-    postDao = database.postDao()
-)
+### 🔐 LoginScreen (Pantalla de Inicio)
+- **Primera pantalla** al abrir la app
+- Logo de AnimeVerse (🎌)
+- Campo de **Email** con validación
+- Campo de **Contraseña** con opción mostrar/ocultar
+- Validaciones en tiempo real
+- Botón **Entrar** con loading state
+- Botón **Crear cuenta** → Navega a RegisterScreen
+
+### 📝 RegisterScreen
+- Logo de AnimeVerse (🎌)
+- Campo **Nombre completo** (mínimo 3 caracteres)
+- Campo **Email** con validación
+- Campo **Contraseña** (mínimo 6 caracteres) con opción mostrar/ocultar
+- Campo **Confirmar contraseña** con validación de coincidencia
+- Validaciones en tiempo real
+- Botón **Registrar** con loading state
+- Botón **Ya tengo cuenta** → Navega a LoginScreen
+
+### 🏠 HomeScreen - Funcionalidades
+
+#### 🎌 Sección Principal
+- Header con título "AnimeVerse"
+- Card informativa de bienvenida
+
+#### 📸 Sección de Cámara
+- **Abrir Cámara** - Captura foto con la cámara del dispositivo
+- **Vista previa** - Muestra la foto capturada
+- **Volver a tomar** - Reemplaza la foto actual
+- **Eliminar** - Borra la foto con diálogo de confirmación
+- **Almacenamiento** - Guarda en cache temporal
+
+#### 📰 Publicaciones
+- Muestra las 3 publicaciones más recientes
+- Cards con:
+  - Autor y categoría
+  - Título y contenido
+  - Likes ❤️ y comentarios 💬
+
+## 🔧 Configuración Técnica
+
+### Permisos (AndroidManifest.xml)
+```xml
+<uses-permission android:name="android.permission.CAMERA" />
+<uses-feature android:name="android.hardware.camera" android:required="false" />
 ```
 
-### 3. Usar el repositorio:
+### FileProvider
+```xml
+<provider
+    android:name="androidx.core.content.FileProvider"
+    android:authorities="${applicationId}.fileprovider"
+    android:grantUriPermissions="true">
+    <meta-data
+        android:name="android.support.FILE_PROVIDER_PATHS"
+        android:resource="@xml/file_paths" />
+</provider>
+```
 
+### Rutas de Archivos (file_paths.xml)
+```xml
+<cache-path name="images" path="images/" />
+```
+
+## 🎯 Estado del Proyecto
+
+```
+✅ Estructura Android completa
+✅ Base de datos Room (10 entidades)
+✅ HomeScreen con Material 3
+✅ Funcionalidad de cámara completa
+✅ FileProvider configurado
+✅ Permisos de cámara
+✅ Coil para cargar imágenes
+✅ MainActivity funcional
+✅ LoginScreen - Pantalla de inicio de sesión
+✅ RegisterScreen - Pantalla de registro
+✅ Navegación básica entre pantallas
+⬜ ViewModels para autenticación
+⬜ Conectar Login/Register con base de datos
+```
+
+## 📱 Ejecutar la App
+
+### En Android Studio:
+1. Conecta dispositivo o abre emulador
+2. Click **Run ▶️** (Shift + F10)
+
+### Gradle:
+```bash
+./gradlew clean
+./gradlew assembleDebug
+./gradlew installDebug
+```
+
+## 🎨 Componentes Principales
+
+### HomeScreen.kt
+- **CameraCard** - Componente de captura de fotos
+- **PostCard** - Tarjetas de publicaciones
+- **createTempImageFile()** - Crea archivo temporal
+- **getImageUriForFile()** - Obtiene URI con FileProvider
+
+### Funcionalidad de Cámara
 ```kotlin
-// Login de usuario
-viewModelScope.launch {
-    val result = repository.loginUser("anime@example.com", "123456")
-    result.onSuccess { user ->
-        // Usuario autenticado
-    }.onFailure { error ->
-        // Error de credenciales
+// Launcher para la cámara
+val takePictureLauncher = rememberLauncherForActivityResult(
+    contract = ActivityResultContracts.TakePicture()
+) { success ->
+    if (success) {
+        // Foto tomada exitosamente
     }
 }
+```
 
-// Obtener todas las publicaciones
-viewModelScope.launch {
-    repository.getAllPublicaciones().collect { publicaciones ->
-        // Actualizar UI con publicaciones
-    }
+## 🗄️ Base de Datos
+
+**10 Entidades:**
+1. RolEntity - Roles de usuario
+2. EstadoEntity - Estados
+3. TemaEntity - Categorías
+4. UsuarioEntity - Usuarios completos
+5. PublicacionEntity - Publicaciones
+6. ComentarioEntity - Comentarios
+7. CalificacionEntity - Calificaciones
+8. HoraBaneoEntity - Historial baneos
+9. UserEntity - Usuarios simples
+10. PostEntity - Posts simples
+
+Ver [DATABASE_README.md](DATABASE_README.md) para más detalles.
+
+## 🐛 Troubleshooting
+
+### Error de Gradle Sync
+```bash
+./gradlew clean
+./gradlew build
+```
+
+### Error de permisos de cámara
+El permiso se solicita automáticamente en runtime (Android 6+)
+
+### Error de FileProvider
+Verifica que `file_paths.xml` exista en `res/xml/`
+
+## 🧭 Navegación
+
+La app utiliza navegación simple con `remember` y `mutableStateOf`:
+
+```kotlin
+enum class Screen {
+    Login,    // Pantalla inicial
+    Register, // Pantalla de registro
+    Home      // Pantalla principal
 }
 ```
 
-## 📋 Datos de Ejemplo Precargados
+**Flujo de navegación:**
+1. **App inicia** → LoginScreen
+2. **Login exitoso** → HomeScreen
+3. **Crear cuenta (Login)** → RegisterScreen
+4. **Registro exitoso** → LoginScreen
+5. **Ya tengo cuenta (Register)** → LoginScreen
 
-La base de datos se crea automáticamente con:
+## 📝 Próximos Pasos
 
-- **3 Roles:** Administrador, Usuario, Moderador
-- **3 Estados:** Activo, Inactivo, Baneado
-- **4 Temas:** Anime, Manga, Gaming, General
-- **2 Usuarios** del sistema completo
-- **3 Usuarios** del sistema simple
-- **2 Publicaciones** de ejemplo
-- **Comentarios y calificaciones** de prueba
+1. ⬜ Guardar fotos en la base de datos
+2. ⬜ Agregar ViewModels para autenticación
+3. ⬜ Conectar Login/Register con Room Database
+4. ⬜ Implementar sesión persistente
+5. ⬜ Pantallas de detalle de posts
+6. ⬜ Sistema de permisos mejorado
+7. ⬜ Migrar a Jetpack Navigation Component
 
-## 📖 Documentación Adicional
+## 🤝 Git Workflow
 
-Para más detalles sobre la estructura y funcionalidades de la base de datos, consulta [DATABASE_README.md](DATABASE_README.md).
+```bash
+git status
+git add .
+git commit -m "feat: HomeScreen con cámara + Base de datos Room"
+git push origin main
+```
 
-## 🎯 Próximos Pasos
+## 📚 Documentación
 
-1. ✅ Base de datos configurada
-2. 🔲 Crear ViewModels para cada pantalla
-3. 🔲 Implementar pantallas de UI (Login, Register, Home, etc.)
-4. 🔲 Agregar navegación entre pantallas
-5. 🔲 Implementar validaciones de formularios
+- **[DATABASE_README.md](DATABASE_README.md)** - Base de datos completa
+- **[UI_README.md](UI_README.md)** - Componentes UI
+- **[ESTRUCTURA.md](ESTRUCTURA.md)** - Arquitectura
 
 ---
 
-**Desarrollado por:** Tu equipo  
-**Fecha:** Octubre 2024  
-**Inspirado en:** Proyecto UINavegacion_camara
+**🎌 AnimeVerse + 📸 Cámara**  
+**Versión:** 1.0.0-alpha  
+**SDK Min:** 24 (Android 7.0)  
+**SDK Target:** 34 (Android 14)  
+**Kotlin:** 1.9.0
+
+**Combina:**
+- Base de datos de AnimeVerse
+- Funcionalidad de cámara de UINavegacion
