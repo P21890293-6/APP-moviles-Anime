@@ -11,16 +11,20 @@ Combina:
 ## 📱 Características Principales
 
 ### 📸 Captura de Fotos
+- ✅ **Foto de perfil** en registro (opcional)
+- ✅ **HomeScreen** con captura de fotos
 - ✅ Abrir cámara del dispositivo
+- ✅ Vista previa circular en registro
 - ✅ Tomar foto y visualizarla
-- ✅ Eliminar foto con confirmación
+- ✅ Cambiar o eliminar foto
 - ✅ Almacenamiento temporal en cache
 
 ### 🗄️ Base de Datos Room
 - ✅ 10 entidades (Usuario, Post, Comentario, etc.)
-- ✅ Sistema completo y simple de usuarios
+- ✅ Sistema completo y simple de usuarios **con foto de perfil**
 - ✅ Publicaciones con categorías
 - ✅ Datos de ejemplo precargados
+- ✅ Campo `avatar` en UserEntity para guardar foto
 
 ### 🎨 Interfaz Material 3
 - ✅ Diseño moderno con Jetpack Compose
@@ -100,6 +104,11 @@ implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
 
 ### 📝 RegisterScreen
 - Logo de AnimeVerse (🎌)
+- **📸 Foto de perfil (opcional)** 
+  - Vista previa circular
+  - Captura con cámara
+  - Botón "Tomar foto" / "Cambiar"
+  - Botón "Eliminar" si ya hay foto
 - Campo **Nombre completo** (mínimo 3 caracteres)
 - Campo **Email** con validación
 - Campo **Contraseña** (mínimo 6 caracteres) con opción mostrar/ocultar
@@ -131,9 +140,12 @@ implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
 ## 🔧 Configuración Técnica
 
 ### Permisos (AndroidManifest.xml)
+**✅ NO se necesitan permisos explícitos de cámara**
+
+Cuando usas `ActivityResultContracts.TakePicture()`, el sistema Android maneja los permisos automáticamente. NO es necesario declarar:
 ```xml
+<!-- ❌ NO NECESARIO -->
 <uses-permission android:name="android.permission.CAMERA" />
-<uses-feature android:name="android.hardware.camera" android:required="false" />
 ```
 
 ### FileProvider
@@ -150,8 +162,12 @@ implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
 
 ### Rutas de Archivos (file_paths.xml)
 ```xml
-<cache-path name="images" path="images/" />
+<cache-path name="camera_cache" path="images/" />
 ```
+
+**Nota:** Las fotos se guardan temporalmente en `cache/images/` con nombres como:
+- `IMG_yyyyMMdd_HHmmss.jpg` (HomeScreen)
+- `PROFILE_yyyyMMdd_HHmmss.jpg` (RegisterScreen)
 
 ## 🎯 Estado del Proyecto
 
@@ -165,10 +181,12 @@ implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
 ✅ Coil para cargar imágenes
 ✅ MainActivity funcional
 ✅ LoginScreen - Pantalla de inicio de sesión
-✅ RegisterScreen - Pantalla de registro
+✅ RegisterScreen - Pantalla de registro CON foto de perfil 📸
 ✅ Navegación básica entre pantallas
+✅ Captura de foto de perfil en registro
 ⬜ ViewModels para autenticación
 ⬜ Conectar Login/Register con base de datos
+⬜ Guardar foto de perfil en la base de datos
 ```
 
 ## 📱 Ejecutar la App
@@ -186,9 +204,16 @@ implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
 
 ## 🎨 Componentes Principales
 
+### RegisterScreen.kt
+- **Profile Photo Card** - Captura de foto de perfil
+  - Vista previa circular (120dp)
+  - Icono por defecto si no hay foto
+  - Botón "Tomar foto" con icono de cámara
+  - Botón "Eliminar" si ya hay foto
+  - Guarda URI en `photoUriString` (persistente)
+
 ### HomeScreen.kt
 - **CameraCard** - Componente de captura de fotos
-- **PostCard** - Tarjetas de publicaciones
 - **createTempImageFile()** - Crea archivo temporal
 - **getImageUriForFile()** - Obtiene URI con FileProvider
 
@@ -228,11 +253,26 @@ Ver [DATABASE_README.md](DATABASE_README.md) para más detalles.
 ./gradlew build
 ```
 
-### Error de permisos de cámara
-El permiso se solicita automáticamente en runtime (Android 6+)
+### ❌ La app se cierra al abrir la cámara
+**Solución:** NO declares permisos de cámara en el `AndroidManifest.xml`
+
+Cuando usas `ActivityResultContracts.TakePicture()`, el sistema maneja los permisos automáticamente. Si declaras `<uses-permission android:name="android.permission.CAMERA" />`, puede causar que la app se cierre.
+
+**Correcto (sin permisos explícitos):**
+```xml
+<manifest>
+    <application>
+        <!-- Solo FileProvider, SIN permisos de cámara -->
+        <provider ... />
+    </application>
+</manifest>
+```
 
 ### Error de FileProvider
-Verifica que `file_paths.xml` exista en `res/xml/`
+Verifica que:
+1. `file_paths.xml` exista en `res/xml/`
+2. El `authorities` en `AndroidManifest.xml` sea `${applicationId}.fileprovider`
+3. En el código uses `"${context.packageName}.fileprovider"`
 
 ## 🧭 Navegación
 
@@ -255,13 +295,14 @@ enum class Screen {
 
 ## 📝 Próximos Pasos
 
-1. ⬜ Guardar fotos en la base de datos
-2. ⬜ Agregar ViewModels para autenticación
-3. ⬜ Conectar Login/Register con Room Database
-4. ⬜ Implementar sesión persistente
-5. ⬜ Pantallas de detalle de posts
-6. ⬜ Sistema de permisos mejorado
-7. ⬜ Migrar a Jetpack Navigation Component
+1. ⬜ Agregar ViewModels para autenticación
+2. ⬜ Conectar Login/Register con Room Database
+3. ⬜ Guardar foto de perfil en BD al registrarse
+4. ⬜ Mostrar foto de perfil en HomeScreen
+5. ⬜ Implementar sesión persistente
+6. ⬜ Pantallas de detalle de posts
+7. ⬜ Sistema de permisos mejorado
+8. ⬜ Migrar a Jetpack Navigation Component
 
 ## 🤝 Git Workflow
 
