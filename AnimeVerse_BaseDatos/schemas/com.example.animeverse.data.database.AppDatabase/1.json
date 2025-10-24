@@ -1,0 +1,556 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 1,
+    "identityHash": "4f407be29886847938e86d96c1d6d951",
+    "entities": [
+      {
+        "tableName": "rol",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id_rol` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `nombre` TEXT NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id_rol",
+            "columnName": "id_rol",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nombre",
+            "columnName": "nombre",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id_rol"
+          ]
+        },
+        "indices": [],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "estado",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id_estado` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `nombre` TEXT NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id_estado",
+            "columnName": "id_estado",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nombre",
+            "columnName": "nombre",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id_estado"
+          ]
+        },
+        "indices": [],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "usuario",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id_usuario` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `nombre` TEXT NOT NULL, `correo` TEXT NOT NULL, `clave` TEXT NOT NULL, `nickname` TEXT NOT NULL, `foto_perfil` TEXT, `id_rol` INTEGER NOT NULL, `id_estado` INTEGER NOT NULL, FOREIGN KEY(`id_rol`) REFERENCES `rol`(`id_rol`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`id_estado`) REFERENCES `estado`(`id_estado`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id_usuario",
+            "columnName": "id_usuario",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nombre",
+            "columnName": "nombre",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "correo",
+            "columnName": "correo",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "clave",
+            "columnName": "clave",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nickname",
+            "columnName": "nickname",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "foto_perfil",
+            "columnName": "foto_perfil",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "id_rol",
+            "columnName": "id_rol",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "id_estado",
+            "columnName": "id_estado",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id_usuario"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_usuario_id_rol",
+            "unique": false,
+            "columnNames": [
+              "id_rol"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_usuario_id_rol` ON `${TABLE_NAME}` (`id_rol`)"
+          },
+          {
+            "name": "index_usuario_id_estado",
+            "unique": false,
+            "columnNames": [
+              "id_estado"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_usuario_id_estado` ON `${TABLE_NAME}` (`id_estado`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "rol",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "id_rol"
+            ],
+            "referencedColumns": [
+              "id_rol"
+            ]
+          },
+          {
+            "table": "estado",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "id_estado"
+            ],
+            "referencedColumns": [
+              "id_estado"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "tema",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id_tema` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `nombre` TEXT NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id_tema",
+            "columnName": "id_tema",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nombre",
+            "columnName": "nombre",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id_tema"
+          ]
+        },
+        "indices": [],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "publicacion",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id_publi` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `nombre` TEXT NOT NULL, `fecha_registro` TEXT NOT NULL, `descripcion` TEXT NOT NULL, `foto_publicacion` TEXT, `fecha_baneo` TEXT, `motivo_baneo` TEXT, `id_usuario` INTEGER NOT NULL, `id_tema` INTEGER NOT NULL, FOREIGN KEY(`id_usuario`) REFERENCES `usuario`(`id_usuario`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`id_tema`) REFERENCES `tema`(`id_tema`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id_publi",
+            "columnName": "id_publi",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nombre",
+            "columnName": "nombre",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fecha_registro",
+            "columnName": "fecha_registro",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "descripcion",
+            "columnName": "descripcion",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "foto_publicacion",
+            "columnName": "foto_publicacion",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "fecha_baneo",
+            "columnName": "fecha_baneo",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "motivo_baneo",
+            "columnName": "motivo_baneo",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "id_usuario",
+            "columnName": "id_usuario",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "id_tema",
+            "columnName": "id_tema",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id_publi"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_publicacion_id_usuario",
+            "unique": false,
+            "columnNames": [
+              "id_usuario"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_publicacion_id_usuario` ON `${TABLE_NAME}` (`id_usuario`)"
+          },
+          {
+            "name": "index_publicacion_id_tema",
+            "unique": false,
+            "columnNames": [
+              "id_tema"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_publicacion_id_tema` ON `${TABLE_NAME}` (`id_tema`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "usuario",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "id_usuario"
+            ],
+            "referencedColumns": [
+              "id_usuario"
+            ]
+          },
+          {
+            "table": "tema",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "id_tema"
+            ],
+            "referencedColumns": [
+              "id_tema"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "comentario",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id_comentario` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `fecha_registro` TEXT NOT NULL, `comentario` TEXT NOT NULL, `fecha_baneo` TEXT, `motivo_baneo` TEXT, `id_publi` INTEGER NOT NULL, `id_usuario` INTEGER NOT NULL, FOREIGN KEY(`id_publi`) REFERENCES `publicacion`(`id_publi`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`id_usuario`) REFERENCES `usuario`(`id_usuario`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id_comentario",
+            "columnName": "id_comentario",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fecha_registro",
+            "columnName": "fecha_registro",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "comentario",
+            "columnName": "comentario",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fecha_baneo",
+            "columnName": "fecha_baneo",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "motivo_baneo",
+            "columnName": "motivo_baneo",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "id_publi",
+            "columnName": "id_publi",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "id_usuario",
+            "columnName": "id_usuario",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id_comentario"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_comentario_id_publi",
+            "unique": false,
+            "columnNames": [
+              "id_publi"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_comentario_id_publi` ON `${TABLE_NAME}` (`id_publi`)"
+          },
+          {
+            "name": "index_comentario_id_usuario",
+            "unique": false,
+            "columnNames": [
+              "id_usuario"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_comentario_id_usuario` ON `${TABLE_NAME}` (`id_usuario`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "publicacion",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "id_publi"
+            ],
+            "referencedColumns": [
+              "id_publi"
+            ]
+          },
+          {
+            "table": "usuario",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "id_usuario"
+            ],
+            "referencedColumns": [
+              "id_usuario"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "calificacion",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id_calificacion` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `fecha_calificacion` TEXT NOT NULL, `calificacion` INTEGER NOT NULL, `id_publi` INTEGER NOT NULL, `id_usuario` INTEGER NOT NULL, FOREIGN KEY(`id_publi`) REFERENCES `publicacion`(`id_publi`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`id_usuario`) REFERENCES `usuario`(`id_usuario`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id_calificacion",
+            "columnName": "id_calificacion",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fecha_calificacion",
+            "columnName": "fecha_calificacion",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "calificacion",
+            "columnName": "calificacion",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "id_publi",
+            "columnName": "id_publi",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "id_usuario",
+            "columnName": "id_usuario",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id_calificacion"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_calificacion_id_publi",
+            "unique": false,
+            "columnNames": [
+              "id_publi"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_calificacion_id_publi` ON `${TABLE_NAME}` (`id_publi`)"
+          },
+          {
+            "name": "index_calificacion_id_usuario",
+            "unique": false,
+            "columnNames": [
+              "id_usuario"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_calificacion_id_usuario` ON `${TABLE_NAME}` (`id_usuario`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "publicacion",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "id_publi"
+            ],
+            "referencedColumns": [
+              "id_publi"
+            ]
+          },
+          {
+            "table": "usuario",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "id_usuario"
+            ],
+            "referencedColumns": [
+              "id_usuario"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "hora_baneo",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id_h_baneo` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `fecha_baneo` TEXT NOT NULL, `motivo` TEXT NOT NULL, `cantidad` INTEGER NOT NULL, `id_usuario` INTEGER NOT NULL, FOREIGN KEY(`id_usuario`) REFERENCES `usuario`(`id_usuario`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id_h_baneo",
+            "columnName": "id_h_baneo",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fecha_baneo",
+            "columnName": "fecha_baneo",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "motivo",
+            "columnName": "motivo",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "cantidad",
+            "columnName": "cantidad",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "id_usuario",
+            "columnName": "id_usuario",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id_h_baneo"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_hora_baneo_id_usuario",
+            "unique": false,
+            "columnNames": [
+              "id_usuario"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_hora_baneo_id_usuario` ON `${TABLE_NAME}` (`id_usuario`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "usuario",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "id_usuario"
+            ],
+            "referencedColumns": [
+              "id_usuario"
+            ]
+          }
+        ]
+      }
+    ],
+    "views": [],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '4f407be29886847938e86d96c1d6d951')"
+    ]
+  }
+}
