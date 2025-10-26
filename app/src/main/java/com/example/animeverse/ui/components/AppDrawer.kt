@@ -1,5 +1,6 @@
 package com.example.animeverse.ui.components
 
+import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -17,8 +18,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.example.animeverse.data.local.user.UserEntity
 
 // Data class para representar cada opción del drawer (patrón del profesor)
@@ -37,6 +42,8 @@ fun AppDrawer(
     onToggleDarkMode: (Boolean) -> Unit = {}, // Callback para cambiar tema
     modifier: Modifier = Modifier       // Modificador opcional
 ) {
+    val context = LocalContext.current
+    
     ModalDrawerSheet(                   // Hoja que contiene el contenido del drawer
         modifier = modifier
     ) {
@@ -58,12 +65,26 @@ fun AppDrawer(
                         .background(MaterialTheme.colorScheme.primary),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = currentUser.username.first().uppercase(),
-                        style = MaterialTheme.typography.headlineMedium,
-                        color = MaterialTheme.colorScheme.onPrimary,
-                        fontWeight = FontWeight.Bold
-                    )
+                    if (currentUser.avatar.isNullOrEmpty()) {
+                        // Sin foto: muestra inicial
+                        Text(
+                            text = currentUser.username.first().uppercase(),
+                            style = MaterialTheme.typography.headlineMedium,
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            fontWeight = FontWeight.Bold
+                        )
+                    } else {
+                        // Con foto: muestra imagen
+                        AsyncImage(
+                            model = ImageRequest.Builder(context)
+                                .data(Uri.parse(currentUser.avatar))
+                                .crossfade(true)
+                                .build(),
+                            contentDescription = "Foto de perfil",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                    }
                 }
                 
                 Spacer(Modifier.height(12.dp))
@@ -172,7 +193,7 @@ fun AppDrawer(
             Switch(
                 checked = isDarkMode,
                 onCheckedChange = onToggleDarkMode
-            )/
+            )
         }
         
         // Botón de cerrar sesión (si hay usuario logueado)
@@ -207,7 +228,7 @@ fun drawerItemsForUser(
         if (currentUser.role == "ADMIN") {
             // Items para admin
             listOf(
-                DrawerItem("Dashboard", Icons.Filled.Dashboard, onHome),
+                DrawerItem("Panel de Control", Icons.Filled.Dashboard, onHome),
                 DrawerItem("Usuarios", Icons.Filled.People, onHome),
                 DrawerItem("Editar Perfil", Icons.Filled.Edit, onEditProfile)
             )

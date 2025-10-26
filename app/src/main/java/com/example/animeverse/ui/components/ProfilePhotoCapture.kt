@@ -18,6 +18,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -79,7 +80,10 @@ fun ProfilePhotoCapture(
     
     // Card contenedor centrado
     ElevatedCard(
-        modifier = modifier.fillMaxWidth()
+        modifier = modifier.fillMaxWidth(),
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = Color(0xFF2C2C2E)
+        )
     ) {
         Column(
             modifier = Modifier
@@ -90,7 +94,8 @@ fun ProfilePhotoCapture(
             Text(
                 text = title,
                 style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Medium
+                fontWeight = FontWeight.Medium,
+                color = Color.White
             )
             Spacer(Modifier.height(12.dp))
             
@@ -99,7 +104,7 @@ fun ProfilePhotoCapture(
                 modifier = Modifier
                     .size(120.dp)
                     .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                    .background(Color(0xFF3A3A3C)),
                 contentAlignment = Alignment.Center
             ) {
                 if (photoUri.isNullOrEmpty()) {
@@ -108,7 +113,7 @@ fun ProfilePhotoCapture(
                         imageVector = Icons.Filled.Person,
                         contentDescription = "Sin foto",
                         modifier = Modifier.size(60.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                        tint = Color.White.copy(alpha = 0.6f)
                     )
                 } else {
                     // Con foto: muestra imagen usando Coil

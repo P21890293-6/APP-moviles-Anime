@@ -12,6 +12,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.animeverse.data.local.user.UserEntity
@@ -25,18 +26,25 @@ import com.example.animeverse.data.local.user.UserEntity
 fun AdminDashboard(
     currentUser: UserEntity,
     allUsers: List<UserEntity> = emptyList(),
+    allPosts: List<com.example.animeverse.data.local.post.PostEntity> = emptyList(),
+    allReports: List<com.example.animeverse.data.local.post.PostReportEntity> = emptyList(),
     onLogout: () -> Unit = {},
     onManageUsers: () -> Unit = {},
     onManagePosts: () -> Unit = {},
     onManageReports: () -> Unit = {},
     onViewStats: () -> Unit = {},
     onBanUser: (Long, Boolean) -> Unit = { _, _ -> },  // Callback para banear/desbanear
-    onDeleteUser: (Long) -> Unit = {}  // Callback para eliminar usuario
+    onDeleteUser: (Long) -> Unit = {},  // Callback para eliminar usuario
+    onDeletePost: (Long) -> Unit = {},  // Callback para eliminar publicación
+    onDismissReport: (Long) -> Unit = {},  // Callback para descartar reporte
+    onDeleteReportedPost: (Long, Long) -> Unit = { _, _ -> }  // Callback para eliminar post reportado (reportId, postId)
 ) {
     var selectedTab by remember { mutableStateOf(0) }
     
-    // Función para cambiar a la pestaña de usuarios
+    // Funciones para cambiar de pestaña
     val navigateToUsers = { selectedTab = 1 }
+    val navigateToPosts = { selectedTab = 3 }
+    val navigateToStats = { selectedTab = 4 }
     
     Scaffold(
         topBar = {
@@ -72,7 +80,7 @@ fun AdminDashboard(
                 Tab(
                     selected = selectedTab == 0,
                     onClick = { selectedTab = 0 },
-                    text = { Text("Dashboard") },
+                    text = { Text("Panel de Control") },
                     icon = { Icon(Icons.Filled.Dashboard, null) }
                 )
                 Tab(
@@ -87,22 +95,49 @@ fun AdminDashboard(
                     text = { Text("Reportes") },
                     icon = { Icon(Icons.Filled.Report, null) }
                 )
+                Tab(
+                    selected = selectedTab == 3,
+                    onClick = { selectedTab = 3 },
+                    text = { Text("Posts") },
+                    icon = { Icon(Icons.Filled.Article, null) }
+                )
+                Tab(
+                    selected = selectedTab == 4,
+                    onClick = { selectedTab = 4 },
+                    text = { Text("Estadísticas") },
+                    icon = { Icon(Icons.Filled.BarChart, null) }
+                )
             }
             
             // Contenido según tab seleccionado
             when (selectedTab) {
                 0 -> DashboardTab(
                     totalUsers = allUsers.size,
-                    onManageUsers = navigateToUsers,  // Ahora navega a la pestaña de usuarios
-                    onManagePosts = onManagePosts,
-                    onViewStats = onViewStats
+                    totalPosts = allPosts.size,
+                    onManageUsers = navigateToUsers,  // Navega a la pestaña de usuarios
+                    onManagePosts = navigateToPosts,  // Navega a la pestaña de posts
+                    onViewStats = navigateToStats  // Navega a la pestaña de estadísticas
                 )
                 1 -> UsersTab(
                     users = allUsers, 
                     onBanUser = onBanUser,
                     onDeleteUser = onDeleteUser
                 )
-                2 -> ReportsTab()
+                2 -> ReportsTab(
+                    reports = allReports,
+                    onDismissReport = onDismissReport,
+                    onDeletePost = onDeleteReportedPost
+                )
+                3 -> PostsTab(
+                    posts = allPosts,
+                    onDeletePost = onDeletePost
+                )
+                4 -> StatsTab(
+                    totalUsers = allUsers.size,
+                    totalPosts = allPosts.size,
+                    users = allUsers,
+                    posts = allPosts
+                )
             }
         }
     }
@@ -121,6 +156,7 @@ private data class BanDialogState(
 @Composable
 private fun DashboardTab(
     totalUsers: Int,
+    totalPosts: Int,
     onManageUsers: () -> Unit,
     onManagePosts: () -> Unit,
     onViewStats: () -> Unit
@@ -153,7 +189,7 @@ private fun DashboardTab(
                 )
                 StatCard(
                     title = "Posts",
-                    value = "24",
+                    value = totalPosts.toString(),
                     icon = Icons.Filled.Article,
                     modifier = Modifier.weight(1f)
                 )
@@ -170,7 +206,7 @@ private fun DashboardTab(
                     value = "3",
                     icon = Icons.Filled.Report,
                     modifier = Modifier.weight(1f),
-                    color = MaterialTheme.colorScheme.errorContainer
+                    color = Color(0xFF8B2C2C)
                 )
                 StatCard(
                     title = "Comentarios",
@@ -307,7 +343,7 @@ private fun StatCard(
     value: String,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     modifier: Modifier = Modifier,
-    color: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.primaryContainer
+    color: androidx.compose.ui.graphics.Color = Color(0xFF2C2C2E)
 ) {
     ElevatedCard(
         modifier = modifier,
@@ -325,19 +361,19 @@ private fun StatCard(
                 imageVector = icon,
                 contentDescription = null,
                 modifier = Modifier.size(32.dp),
-                tint = MaterialTheme.colorScheme.onPrimaryContainer
+                tint = Color.White
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = value,
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onPrimaryContainer
+                color = Color.White
             )
             Text(
                 text = title,
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onPrimaryContainer
+                color = Color.White.copy(alpha = 0.8f)
             )
         }
     }
@@ -608,32 +644,189 @@ private fun UserCard(
  * Tab de reportes y moderación.
  */
 @Composable
-private fun ReportsTab() {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        contentAlignment = Alignment.Center
+private fun ReportsTab(
+    reports: List<com.example.animeverse.data.local.post.PostReportEntity> = emptyList(),
+    onDismissReport: (Long) -> Unit = {},
+    onDeletePost: (Long, Long) -> Unit = { _, _ -> }
+) {
+    if (reports.isEmpty()) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Report,
+                    contentDescription = null,
+                    modifier = Modifier.size(64.dp),
+                    tint = MaterialTheme.colorScheme.primary
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = "No hay reportes pendientes",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "Los reportes de usuarios aparecerán aquí",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    } else {
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            item {
+                Text(
+                    text = "🚩 Reportes Pendientes (${reports.size})",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+            
+            items(reports) { report ->
+                ReportCard(
+                    report = report,
+                    onDismiss = { onDismissReport(report.id) },
+                    onDeletePost = { onDeletePost(report.id, report.postId) }
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Card individual de reporte.
+ */
+@Composable
+private fun ReportCard(
+    report: com.example.animeverse.data.local.post.PostReportEntity,
+    onDismiss: () -> Unit = {},
+    onDeletePost: () -> Unit = {}
+) {
+    var showMenu by remember { mutableStateOf(false) }
+    
+    ElevatedCard(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
+        )
     ) {
         Column(
-            horizontalAlignment = Alignment.CenterHorizontally
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
         ) {
-            Icon(
-                imageVector = Icons.Filled.Report,
-                contentDescription = null,
-                modifier = Modifier.size(64.dp),
-                tint = MaterialTheme.colorScheme.primary
-            )
-            Spacer(modifier = Modifier.height(16.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Report,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Reporte",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+                
+                Box {
+                    IconButton(onClick = { showMenu = true }) {
+                        Icon(Icons.Filled.MoreVert, "Opciones")
+                    }
+                    DropdownMenu(
+                        expanded = showMenu,
+                        onDismissRequest = { showMenu = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Descartar reporte") },
+                            onClick = {
+                                showMenu = false
+                                onDismiss()
+                            },
+                            leadingIcon = { Icon(Icons.Filled.CheckCircle, null) }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Eliminar publicación", color = MaterialTheme.colorScheme.error) },
+                            onClick = {
+                                showMenu = false
+                                onDeletePost()
+                            },
+                            leadingIcon = { 
+                                Icon(
+                                    Icons.Filled.Delete, 
+                                    null,
+                                    tint = MaterialTheme.colorScheme.error
+                                ) 
+                            }
+                        )
+                    }
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(12.dp))
+            HorizontalDivider()
+            Spacer(modifier = Modifier.height(12.dp))
+            
+            // Info del post reportado
             Text(
-                text = "No hay reportes pendientes",
-                style = MaterialTheme.typography.titleMedium,
+                text = "Publicación reportada:",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = "\"${report.postTitle}\"",
+                style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold
             )
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = "Los reportes de usuarios aparecerán aquí",
+                text = "Por: ${report.postAuthorName}",
                 style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            
+            Spacer(modifier = Modifier.height(12.dp))
+            
+            // Info del reporte
+            Text(
+                text = "Reportado por: ${report.reportedByName}",
+                style = MaterialTheme.typography.bodyMedium
+            )
+            Text(
+                text = "Razón: ${report.reason}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            val dateFormat = java.text.SimpleDateFormat("dd/MM/yyyy HH:mm", java.util.Locale.getDefault())
+            val date = dateFormat.format(java.util.Date(report.reportedAt))
+            Text(
+                text = "Fecha: $date",
+                style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
@@ -734,8 +927,8 @@ private fun ViewProfileDialog(
                 HorizontalDivider()
                 
                 // Fecha de registro
-                val date = java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.getDefault())
-                    .format(java.util.Date(user.createdAt))
+                val dateFormat = java.text.SimpleDateFormat("dd-MM-yyyy", java.util.Locale.getDefault())
+                val date = dateFormat.format(java.util.Date(user.createdAt))
                 InfoRow("Registro:", date)
             }
         },
@@ -821,3 +1014,732 @@ private fun DeleteUserDialog(
     )
 }
 
+/**
+ * Tab de gestión de publicaciones.
+ */
+@Composable
+private fun PostsTab(
+    posts: List<com.example.animeverse.data.local.post.PostEntity>,
+    onDeletePost: (Long) -> Unit
+) {
+    // Estado para dialog de eliminar post
+    var showDeleteDialog by remember { mutableStateOf(false) }
+    var postToDelete by remember { mutableStateOf<com.example.animeverse.data.local.post.PostEntity?>(null) }
+    
+    // Estado para dialog de ver post completo
+    var showViewDialog by remember { mutableStateOf(false) }
+    var selectedPost by remember { mutableStateOf<com.example.animeverse.data.local.post.PostEntity?>(null) }
+    
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        item {
+            Text(
+                text = "📝 Gestión de Publicaciones",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+        }
+        
+        items(posts) { post ->
+            PostCard(
+                post = post,
+                onViewClick = {
+                    selectedPost = post
+                    showViewDialog = true
+                },
+                onDeleteClick = {
+                    postToDelete = post
+                    showDeleteDialog = true
+                }
+            )
+        }
+        
+        if (posts.isEmpty()) {
+            item {
+                Text(
+                    text = "No hay publicaciones",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(16.dp)
+                )
+            }
+        }
+    }
+    
+    // Dialog de ver post completo
+    if (showViewDialog && selectedPost != null) {
+        ViewPostDialog(
+            post = selectedPost!!,
+            onDismiss = { showViewDialog = false }
+        )
+    }
+    
+    // Dialog de confirmar eliminación
+    if (showDeleteDialog && postToDelete != null) {
+        DeletePostDialog(
+            postTitle = postToDelete!!.title,
+            onConfirm = {
+                onDeletePost(postToDelete!!.id)
+                showDeleteDialog = false
+            },
+            onDismiss = { showDeleteDialog = false }
+        )
+    }
+}
+
+/**
+ * Card individual de publicación.
+ */
+@Composable
+private fun PostCard(
+    post: com.example.animeverse.data.local.post.PostEntity,
+    onViewClick: () -> Unit = {},
+    onDeleteClick: () -> Unit = {}
+) {
+    var showMenu by remember { mutableStateOf(false) }
+    
+    val themeName = when (post.themeId) {
+        1 -> "Anime"
+        2 -> "Manga"
+        3 -> "Gaming"
+        else -> "General"
+    }
+    
+    val date = java.text.SimpleDateFormat("dd-MM-yyyy HH:mm", java.util.Locale.getDefault())
+        .format(java.util.Date(post.createdAt))
+    
+    ElevatedCard(
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            // Header con autor y menú
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = post.title,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 2
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Por ${post.authorName}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            text = "•",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        AssistChip(
+                            onClick = { },
+                            label = {
+                                Text(
+                                    text = themeName,
+                                    style = MaterialTheme.typography.labelSmall
+                                )
+                            },
+                            modifier = Modifier.height(24.dp)
+                        )
+                    }
+                }
+                
+                // Menú de opciones
+                Box {
+                    IconButton(onClick = { showMenu = true }) {
+                        Icon(Icons.Filled.MoreVert, "Opciones")
+                    }
+                    DropdownMenu(
+                        expanded = showMenu,
+                        onDismissRequest = { showMenu = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Ver completo") },
+                            onClick = {
+                                showMenu = false
+                                onViewClick()
+                            },
+                            leadingIcon = { Icon(Icons.Filled.Visibility, null) }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Eliminar") },
+                            onClick = {
+                                showMenu = false
+                                onDeleteClick()
+                            },
+                            leadingIcon = { Icon(Icons.Filled.Delete, null) }
+                        )
+                    }
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            // Contenido (preview)
+            Text(
+                text = post.content,
+                style = MaterialTheme.typography.bodyMedium,
+                maxLines = 3,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            
+            Spacer(modifier = Modifier.height(12.dp))
+            
+            // Stats
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Favorite,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp),
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        text = post.likes.toString(),
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Comment,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp),
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        text = post.comments.toString(),
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+                Spacer(modifier = Modifier.weight(1f))
+                Text(
+                    text = date,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Dialog para ver el post completo.
+ */
+@Composable
+private fun ViewPostDialog(
+    post: com.example.animeverse.data.local.post.PostEntity,
+    onDismiss: () -> Unit
+) {
+    val themeName = when (post.themeId) {
+        1 -> "Anime"
+        2 -> "Manga"
+        3 -> "Gaming"
+        else -> "General"
+    }
+    
+    val date = java.text.SimpleDateFormat("dd-MM-yyyy HH:mm", java.util.Locale.getDefault())
+        .format(java.util.Date(post.createdAt))
+    
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Column {
+                Text(post.title)
+                Spacer(modifier = Modifier.height(4.dp))
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Por ${post.authorName}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    AssistChip(
+                        onClick = { },
+                        label = {
+                            Text(
+                                text = themeName,
+                                style = MaterialTheme.typography.labelSmall
+                            )
+                        },
+                        modifier = Modifier.height(24.dp)
+                    )
+                }
+            }
+        },
+        text = {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text(
+                    text = post.content,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                HorizontalDivider()
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Icon(Icons.Filled.Favorite, null, modifier = Modifier.size(16.dp))
+                        Text("${post.likes} likes", style = MaterialTheme.typography.bodySmall)
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Icon(Icons.Filled.Comment, null, modifier = Modifier.size(16.dp))
+                        Text("${post.comments} comentarios", style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+                Text(
+                    text = "Publicado: $date",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        },
+        confirmButton = {
+            Button(onClick = onDismiss) {
+                Text("Cerrar")
+            }
+        }
+    )
+}
+
+/**
+ * Dialog de confirmación para eliminar publicación.
+ */
+@Composable
+private fun DeletePostDialog(
+    postTitle: String,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = {
+            Icon(
+                imageVector = Icons.Filled.Warning,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.error,
+                modifier = Modifier.size(48.dp)
+            )
+        },
+        title = {
+            Text(
+                "⚠️ Eliminar Publicación",
+                color = MaterialTheme.colorScheme.error
+            )
+        },
+        text = {
+            Text(
+                "¿Estás seguro de eliminar la publicación \"$postTitle\"?\n\n" +
+                "Esta acción es permanente y eliminará:\n" +
+                "• La publicación y su contenido\n" +
+                "• Todos los comentarios asociados\n" +
+                "• Las calificaciones recibidas\n\n" +
+                "Esta acción NO se puede deshacer."
+            )
+        },
+        confirmButton = {
+            Button(
+                onClick = onConfirm,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.error
+                )
+            ) {
+                Text("Eliminar")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancelar")
+            }
+        }
+    )
+}
+
+/**
+ * Tab de estadísticas detalladas.
+ */
+@Composable
+private fun StatsTab(
+    totalUsers: Int,
+    totalPosts: Int,
+    users: List<UserEntity>,
+    posts: List<com.example.animeverse.data.local.post.PostEntity>
+) {
+    // Calcular estadísticas
+    val activeUsers = users.count { !it.banned }
+    val bannedUsers = users.count { it.banned }
+    val adminUsers = users.count { it.role == "ADMIN" }
+    
+    val postsByTheme = posts.groupBy { it.themeId }.mapValues { it.value.size }
+    val totalLikes = posts.sumOf { it.likes }
+    val totalComments = posts.sumOf { it.comments }
+    
+    val mostActiveUser = posts.groupBy { it.authorId }
+        .maxByOrNull { it.value.size }
+        ?.let { entry ->
+            users.find { it.id == entry.key }?.fullName to entry.value.size
+        }
+    
+    val mostPopularPost = posts.maxByOrNull { it.likes }
+    
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        item {
+            Text(
+                text = "📈 Estadísticas Detalladas",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+        }
+        
+        // Sección: Estadísticas de Usuarios
+        item {
+            Text(
+                text = "👥 Usuarios",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
+        
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                DetailStatCard(
+                    title = "Total",
+                    value = totalUsers.toString(),
+                    icon = Icons.Filled.People,
+                    modifier = Modifier.weight(1f)
+                )
+                DetailStatCard(
+                    title = "Activos",
+                    value = activeUsers.toString(),
+                    icon = Icons.Filled.CheckCircle,
+                    color = Color(0xFF2C5C2C),
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+        
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                DetailStatCard(
+                    title = "Baneados",
+                    value = bannedUsers.toString(),
+                    icon = Icons.Filled.Block,
+                    color = Color(0xFF8B2C2C),
+                    modifier = Modifier.weight(1f)
+                )
+                DetailStatCard(
+                    title = "Admins",
+                    value = adminUsers.toString(),
+                    icon = Icons.Filled.Shield,
+                    color = Color(0xFF3A3A7C),
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+        
+        // Sección: Estadísticas de Publicaciones
+        item {
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "📝 Publicaciones",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
+        
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                DetailStatCard(
+                    title = "Total Posts",
+                    value = totalPosts.toString(),
+                    icon = Icons.Filled.Article,
+                    modifier = Modifier.weight(1f)
+                )
+                DetailStatCard(
+                    title = "Total Likes",
+                    value = totalLikes.toString(),
+                    icon = Icons.Filled.Favorite,
+                    color = Color(0xFF7C3A3A),
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+        
+        item {
+            DetailStatCard(
+                title = "Total Comentarios",
+                value = totalComments.toString(),
+                icon = Icons.Filled.Comment,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+        
+        // Posts por categoría
+        item {
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "📊 Posts por Categoría",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
+        
+        item {
+            ElevatedCard(
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    CategoryStatRow("🎌 Anime", postsByTheme[1] ?: 0, totalPosts)
+                    CategoryStatRow("📚 Manga", postsByTheme[2] ?: 0, totalPosts)
+                    CategoryStatRow("🎮 Gaming", postsByTheme[3] ?: 0, totalPosts)
+                    CategoryStatRow("💬 General", postsByTheme[4] ?: 0, totalPosts)
+                }
+            }
+        }
+        
+        // Usuario más activo
+        if (mostActiveUser != null) {
+            item {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "🏆 Usuario Más Activo",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+            
+            item {
+                ElevatedCard(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Star,
+                            contentDescription = null,
+                            modifier = Modifier.size(48.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Column {
+                            Text(
+                                text = mostActiveUser.first ?: "Desconocido",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = "${mostActiveUser.second} publicaciones",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Post más popular
+        if (mostPopularPost != null) {
+            item {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "❤️ Post Más Popular",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+            
+            item {
+                ElevatedCard(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                    ) {
+                        Text(
+                            text = mostPopularPost.title,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Por ${mostPopularPost.authorName}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Icon(
+                                    Icons.Filled.Favorite,
+                                    null,
+                                    modifier = Modifier.size(20.dp),
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                                Text(
+                                    "${mostPopularPost.likes} likes",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Icon(
+                                    Icons.Filled.Comment,
+                                    null,
+                                    modifier = Modifier.size(20.dp),
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                                Text(
+                                    "${mostPopularPost.comments} comentarios",
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Espacio final
+        item {
+            Spacer(modifier = Modifier.height(16.dp))
+        }
+    }
+}
+
+/**
+ * Card de estadística detallada.
+ */
+@Composable
+private fun DetailStatCard(
+    title: String,
+    value: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    color: androidx.compose.ui.graphics.Color = Color(0xFF2C2C2E),
+    modifier: Modifier = Modifier
+) {
+    ElevatedCard(
+        modifier = modifier,
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = color
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                modifier = Modifier.size(32.dp),
+                tint = Color.White
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = value,
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+                color = Color.White
+            )
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodySmall,
+                color = Color.White.copy(alpha = 0.8f)
+            )
+        }
+    }
+}
+
+/**
+ * Fila de estadística de categoría con barra de progreso.
+ */
+@Composable
+private fun CategoryStatRow(
+    category: String,
+    count: Int,
+    total: Int
+) {
+    Column {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = category,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium
+            )
+            Text(
+                text = "$count posts",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        Spacer(modifier = Modifier.height(4.dp))
+        LinearProgressIndicator(
+            progress = if (total > 0) count.toFloat() / total.toFloat() else 0f,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(8.dp)
+                .clip(MaterialTheme.shapes.small)
+        )
+    }
+}

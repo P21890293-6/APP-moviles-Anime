@@ -74,6 +74,16 @@ fun AnimeVerseApp(authViewModel: AuthViewModel) {
     
     // Estado para lista de usuarios (para admin)
     var allUsers by remember { mutableStateOf<List<com.example.animeverse.data.local.user.UserEntity>>(emptyList()) }
+    
+    // Estado para lista de publicaciones (para admin y usuarios)
+    var allPosts by remember { mutableStateOf<List<com.example.animeverse.data.local.post.PostEntity>>(emptyList()) }
+    
+    // Estado para publicaciones en formato MockPost para UserHomeScreen
+    var mockPosts by remember { mutableStateOf<List<MockPost>>(emptyList()) }
+    
+    // Estado para reportes (admin)
+    var allReports by remember { mutableStateOf<List<com.example.animeverse.data.local.post.PostReportEntity>>(emptyList()) }
+    
     val context = LocalContext.current
     val database = AppDatabase.getInstance(context)
     
@@ -91,11 +101,35 @@ fun AnimeVerseApp(authViewModel: AuthViewModel) {
         else -> null
     }
     
-    // Cargar usuarios cuando se necesiten
+    // Cargar usuarios, posts y reportes cuando se necesiten
     LaunchedEffect(currentScreen) {
         if (currentScreen is Screen.AdminDashboard) {
             scope.launch {
                 allUsers = database.userDao().getAll()
+                allPosts = database.postDao().getAll()
+                allReports = database.postDao().getAllPendingReports()
+            }
+        } else if (currentScreen is Screen.UserHome) {
+            scope.launch {
+                allPosts = database.postDao().getAll()
+                // Convertir PostEntity a MockPost
+                mockPosts = allPosts.map { post ->
+                    val themeName = when (post.themeId) {
+                        1 -> "Anime"
+                        2 -> "Manga"
+                        3 -> "Gaming"
+                        else -> "General"
+                    }
+                    MockPost(
+                        id = post.id,
+                        authorName = post.authorName,
+                        title = post.title,
+                        content = post.content,
+                        category = themeName,
+                        likes = post.likes,
+                        comments = post.comments
+                    )
+                }
             }
         }
     }
@@ -171,15 +205,15 @@ fun AnimeVerseApp(authViewModel: AuthViewModel) {
             ) {
             Scaffold(
                 topBar = {
-                    AppTopBar(
-                        title = when (currentScreen) {
-                            is Screen.AdminDashboard -> "Admin Dashboard"
-                            is Screen.UserHome -> "AnimeVerse"
-                            is Screen.EditProfile -> "Editar Perfil"
-                            Screen.Login -> "Iniciar Sesión"
-                            Screen.Register -> "Registro"
-                            Screen.Home -> "AnimeVerse"
-                        },
+                AppTopBar(
+                    title = when (currentScreen) {
+                        is Screen.AdminDashboard -> "Panel de Administrador"
+                        is Screen.UserHome -> "AnimeVerse"
+                        is Screen.EditProfile -> "Editar Perfil"
+                        Screen.Login -> "Iniciar Sesión"
+                        Screen.Register -> "Registro"
+                        Screen.Home -> "AnimeVerse"
+                    },
                         currentUser = currentUser,
                         onOpenDrawer = { scope.launch { drawerState.open() } }
                     )
@@ -189,6 +223,8 @@ fun AnimeVerseApp(authViewModel: AuthViewModel) {
                     is Screen.AdminDashboard -> AdminDashboard(
                         currentUser = screen.user,
                         allUsers = allUsers,
+                        allPosts = allPosts,
+                        allReports = allReports,
                         onLogout = onLogout,
                         onManageUsers = {
                             // TODO: Implementar gestión de usuarios
@@ -217,32 +253,158 @@ fun AnimeVerseApp(authViewModel: AuthViewModel) {
                                 // Recargar lista de usuarios
                                 allUsers = database.userDao().getAll()
                             }
+                        },
+                        onDeletePost = { postId ->
+                            // Eliminar publicación
+                            scope.launch {
+                                database.postDao().deletePostById(postId)
+                                // Recargar lista de publicaciones
+                                allPosts = database.postDao().getAll()
+                            }
+                        },
+                        onDismissReport = { reportId ->
+                            scope.launch {
+                                // Actualizar estado del reporte a "DISMISSED"
+                                database.postDao().updateReportStatus(reportId, "DISMISSED")
+                                // Recargar reportes pendientes
+                                allReports = database.postDao().getAllPendingReports()
+                                android.widget.Toast.makeText(
+                                    context,
+                                    "Reporte descartado",
+                                    android.widget.Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                        },
+                        onDeleteReportedPost = { reportId, postId ->
+                            scope.launch {
+                                // Eliminar el post
+                                database.postDao().deletePostById(postId)
+                                // Actualizar el reporte a "REVIEWED"
+                                database.postDao().updateReportStatus(reportId, "REVIEWED")
+                                // Recargar
+                                allPosts = database.postDao().getAll()
+                                allReports = database.postDao().getAllPendingReports()
+                                android.widget.Toast.makeText(
+                                    context,
+                                    "Publicación eliminada y reporte revisado",
+                                    android.widget.Toast.LENGTH_SHORT
+                                ).show()
+                            }
                         }
                     )
                     is Screen.UserHome -> UserHomeScreen(
                         currentUser = screen.user,
-                        posts = listOf(
-                            MockPost(
-                                id = 1,
-                                authorName = "María García",
-                                title = "¿Cuál es tu anime favorito de 2024?",
-                                content = "Hola a todos! Quería saber cuáles han sido sus animes favoritos de este año.",
-                                category = "Anime",
-                                likes = 15,
-                                comments = 8
-                            ),
-                            MockPost(
-                                id = 2,
-                                authorName = "Carlos López",
-                                title = "Recomendaciones de manga",
-                                content = "He leído Death Note y me encantó. ¿Qué otros mangas me recomiendan?",
-                                category = "Manga",
-                                likes = 12,
-                                comments = 5
-                            )
-                        ),
+                        posts = mockPosts,
                         onLogout = onLogout,
-                        onViewProfile = goEditProfile
+                        onViewProfile = goEditProfile,
+                        onLikePost = { postId ->
+                            scope.launch {
+                                val userId = screen.user.id
+                                val hasLiked = database.postDao().hasUserLiked(postId, userId)
+                                
+                                if (hasLiked) {
+                                    // Quitar like
+                                    database.postDao().deleteLike(postId, userId)
+                                    database.postDao().decrementLikes(postId)
+                                } else {
+                                    // Dar like
+                                    database.postDao().insertLike(
+                                        com.example.animeverse.data.local.post.PostLikeEntity(
+                                            postId = postId,
+                                            userId = userId
+                                        )
+                                    )
+                                    database.postDao().incrementLikes(postId)
+                                }
+                                
+                                // Recargar publicaciones
+                                allPosts = database.postDao().getAll()
+                                mockPosts = allPosts.map { post ->
+                                    val themeName = when (post.themeId) {
+                                        1 -> "Anime"
+                                        2 -> "Manga"
+                                        3 -> "Gaming"
+                                        else -> "General"
+                                    }
+                                    MockPost(
+                                        id = post.id,
+                                        authorName = post.authorName,
+                                        title = post.title,
+                                        content = post.content,
+                                        category = themeName,
+                                        likes = post.likes,
+                                        comments = post.comments
+                                    )
+                                }
+                            }
+                        },
+                        onCommentPost = { postId ->
+                            // TODO: Implementar sistema de comentarios
+                            scope.launch {
+                                android.widget.Toast.makeText(
+                                    context,
+                                    "Sistema de comentarios próximamente",
+                                    android.widget.Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                        },
+                        onReportPost = { postId ->
+                            scope.launch {
+                                // Obtener info del post
+                                val post = database.postDao().getPostById(postId)
+                                if (post != null) {
+                                    // Crear reporte
+                                    val report = com.example.animeverse.data.local.post.PostReportEntity(
+                                        postId = postId,
+                                        postTitle = post.title,
+                                        postAuthorName = post.authorName,
+                                        reportedBy = screen.user.id,
+                                        reportedByName = screen.user.fullName,
+                                        reason = "Contenido inapropiado"
+                                    )
+                                    database.postDao().insertReport(report)
+                                    
+                                    android.widget.Toast.makeText(
+                                        context,
+                                        "Publicación reportada. El admin revisará el caso.",
+                                        android.widget.Toast.LENGTH_LONG
+                                    ).show()
+                                }
+                            }
+                        },
+                        onCreatePost = { title, content, themeId: Int ->
+                            scope.launch {
+                                // Crear nueva publicación en la base de datos
+                                val newPost = com.example.animeverse.data.local.post.PostEntity(
+                                    title = title,
+                                    content = content,
+                                    authorId = screen.user.id,
+                                    authorName = screen.user.fullName,
+                                    themeId = themeId
+                                )
+                                database.postDao().insertPost(newPost)
+                                
+                                // Recargar publicaciones
+                                allPosts = database.postDao().getAll()
+                                mockPosts = allPosts.map { post ->
+                                    val themeName = when (post.themeId) {
+                                        1 -> "Anime"
+                                        2 -> "Manga"
+                                        3 -> "Gaming"
+                                        else -> "General"
+                                    }
+                                    MockPost(
+                                        id = post.id,
+                                        authorName = post.authorName,
+                                        title = post.title,
+                                        content = post.content,
+                                        category = themeName,
+                                        likes = post.likes,
+                                        comments = post.comments
+                                    )
+                                }
+                            }
+                        }
                     )
                     is Screen.EditProfile -> {
                         // Crear ViewModel para editar perfil

@@ -20,6 +20,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.graphics.Color
 import com.example.animeverse.ui.viewmodel.AuthViewModel
 import com.example.animeverse.ui.components.ProfilePhotoCapture
 
@@ -110,6 +111,10 @@ fun RegisterScreen(
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Text
                 ),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedTextColor = Color.Black,
+                    unfocusedTextColor = Color.Black
+                ),
                 modifier = Modifier.fillMaxWidth()
             )
             if (state.nameError != null) {
@@ -134,6 +139,10 @@ fun RegisterScreen(
                 isError = state.emailError != null,
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Email
+                ),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedTextColor = Color.Black,
+                    unfocusedTextColor = Color.Black
                 ),
                 modifier = Modifier.fillMaxWidth()
             )
@@ -178,6 +187,10 @@ fun RegisterScreen(
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Password
                 ),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedTextColor = Color.Black,
+                    unfocusedTextColor = Color.Black
+                ),
                 modifier = Modifier.fillMaxWidth()
             )
             if (state.passwordError != null) {
@@ -220,6 +233,10 @@ fun RegisterScreen(
                 isError = state.confirmError != null,
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Password
+                ),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedTextColor = Color.Black,
+                    unfocusedTextColor = Color.Black
                 ),
                 modifier = Modifier.fillMaxWidth()
             )

@@ -28,7 +28,11 @@ fun UserHomeScreen(
     currentUser: UserEntity,
     posts: List<MockPost> = emptyList(),
     onLogout: () -> Unit = {},
-    onViewProfile: () -> Unit = {}
+    onViewProfile: () -> Unit = {},
+    onCreatePost: (String, String, Int) -> Unit = { _, _, _ -> },
+    onLikePost: (Long) -> Unit = {},
+    onCommentPost: (Long) -> Unit = {},
+    onReportPost: (Long) -> Unit = {}
 ) {
     val context = LocalContext.current
     var showCreatePostDialog by remember { mutableStateOf(false) }
@@ -109,7 +113,10 @@ fun UserHomeScreen(
             0 -> FeedTab(
                 modifier = Modifier.padding(paddingValues),
                 currentUser = currentUser,
-                posts = posts
+                posts = posts,
+                onLikeClick = onLikePost,
+                onCommentClick = onCommentPost,
+                onReportClick = onReportPost
             )
             1 -> ExploreTab(modifier = Modifier.padding(paddingValues))
             2 -> ProfileTab(
@@ -125,8 +132,9 @@ fun UserHomeScreen(
     if (showCreatePostDialog) {
         CreatePostDialog(
             onDismiss = { showCreatePostDialog = false },
-            onCreatePost = { title, content ->
-                Toast.makeText(context, "Post creado: $title", Toast.LENGTH_SHORT).show()
+            onCreatePost = { title, content, themeId ->
+                onCreatePost(title, content, themeId)
+                Toast.makeText(context, "Publicación creada exitosamente", Toast.LENGTH_SHORT).show()
                 showCreatePostDialog = false
             }
         )
@@ -140,7 +148,10 @@ fun UserHomeScreen(
 private fun FeedTab(
     modifier: Modifier = Modifier,
     currentUser: UserEntity,
-    posts: List<MockPost>
+    posts: List<MockPost>,
+    onLikeClick: (Long) -> Unit = {},
+    onCommentClick: (Long) -> Unit = {},
+    onReportClick: (Long) -> Unit = {}
 ) {
     LazyColumn(
         modifier = modifier
@@ -169,7 +180,12 @@ private fun FeedTab(
             }
         } else {
             items(posts) { post ->
-                PostCard(post = post)
+                PostCard(
+                    post = post,
+                    onLikeClick = onLikeClick,
+                    onCommentClick = onCommentClick,
+                    onReportClick = onReportClick
+                )
             }
         }
         
@@ -183,7 +199,15 @@ private fun FeedTab(
  * Card de post individual.
  */
 @Composable
-private fun PostCard(post: MockPost) {
+private fun PostCard(
+    post: MockPost,
+    onLikeClick: (Long) -> Unit = {},
+    onCommentClick: (Long) -> Unit = {},
+    onReportClick: (Long) -> Unit = {}
+) {
+    val context = LocalContext.current
+    var showMenu by remember { mutableStateOf(false) }
+    
     ElevatedCard(
         modifier = Modifier.fillMaxWidth()
     ) {
@@ -220,8 +244,39 @@ private fun PostCard(post: MockPost) {
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-                IconButton(onClick = { }) {
-                    Icon(Icons.Filled.MoreVert, "Opciones")
+                Box {
+                    IconButton(onClick = { showMenu = true }) {
+                        Icon(Icons.Filled.MoreVert, "Opciones")
+                    }
+                    DropdownMenu(
+                        expanded = showMenu,
+                        onDismissRequest = { showMenu = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Compartir") },
+                            onClick = {
+                                showMenu = false
+                                Toast.makeText(context, "Compartir publicación", Toast.LENGTH_SHORT).show()
+                            },
+                            leadingIcon = { Icon(Icons.Filled.Share, null) }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Guardar") },
+                            onClick = {
+                                showMenu = false
+                                Toast.makeText(context, "Publicación guardada", Toast.LENGTH_SHORT).show()
+                            },
+                            leadingIcon = { Icon(Icons.Filled.BookmarkBorder, null) }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Reportar") },
+                            onClick = {
+                                showMenu = false
+                                onReportClick(post.id)
+                            },
+                            leadingIcon = { Icon(Icons.Filled.Report, null) }
+                        )
+                    }
                 }
             }
             
@@ -248,7 +303,7 @@ private fun PostCard(post: MockPost) {
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 FilledTonalButton(
-                    onClick = { },
+                    onClick = { onLikeClick(post.id) },
                     modifier = Modifier.weight(1f)
                 ) {
                     Icon(Icons.Filled.ThumbUp, null, modifier = Modifier.size(16.dp))
@@ -256,7 +311,7 @@ private fun PostCard(post: MockPost) {
                     Text("Me gusta (${post.likes})")
                 }
                 OutlinedButton(
-                    onClick = { },
+                    onClick = { onCommentClick(post.id) },
                     modifier = Modifier.weight(1f)
                 ) {
                     Icon(Icons.Filled.Comment, null, modifier = Modifier.size(16.dp))
@@ -589,16 +644,61 @@ private fun ProfileTab(
 @Composable
 private fun CreatePostDialog(
     onDismiss: () -> Unit,
-    onCreatePost: (String, String) -> Unit
+    onCreatePost: (String, String, Int) -> Unit
 ) {
     var title by remember { mutableStateOf("") }
     var content by remember { mutableStateOf("") }
+    var selectedTheme by remember { mutableStateOf(1) } // 1 = Anime por defecto
+    var expandedThemeMenu by remember { mutableStateOf(false) }
+    
+    val themes = mapOf(
+        1 to "🎬 Anime",
+        2 to "📚 Manga",
+        3 to "🎮 Gaming",
+        4 to "💬 General"
+    )
     
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Nueva Publicación") },
         text = {
-            Column {
+            Column(
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                // Selector de tema
+                Text(
+                    text = "Categoría",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Box {
+                    OutlinedButton(
+                        onClick = { expandedThemeMenu = true },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(themes[selectedTheme] ?: "Seleccionar tema")
+                        Spacer(modifier = Modifier.weight(1f))
+                        Icon(Icons.Filled.ArrowDropDown, null)
+                    }
+                    DropdownMenu(
+                        expanded = expandedThemeMenu,
+                        onDismissRequest = { expandedThemeMenu = false }
+                    ) {
+                        themes.forEach { (themeId, themeName) ->
+                            DropdownMenuItem(
+                                text = { Text(themeName) },
+                                onClick = {
+                                    selectedTheme = themeId
+                                    expandedThemeMenu = false
+                                }
+                            )
+                        }
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(12.dp))
+                
                 OutlinedTextField(
                     value = title,
                     onValueChange = { title = it },
@@ -619,7 +719,7 @@ private fun CreatePostDialog(
         },
         confirmButton = {
             Button(
-                onClick = { onCreatePost(title, content) },
+                onClick = { onCreatePost(title, content, selectedTheme) },
                 enabled = title.isNotBlank() && content.isNotBlank()
             ) {
                 Text("Publicar")

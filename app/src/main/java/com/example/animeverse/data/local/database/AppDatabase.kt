@@ -25,6 +25,8 @@ import com.example.animeverse.data.local.user.UserEntity
 import com.example.animeverse.data.local.user.UserDao
 import com.example.animeverse.data.local.post.PostEntity
 import com.example.animeverse.data.local.post.PostDao
+import com.example.animeverse.data.local.post.PostLikeEntity
+import com.example.animeverse.data.local.post.PostReportEntity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -43,9 +45,11 @@ import java.util.*
         CalificacionEntity::class,
         HoraBaneoEntity::class,
         UserEntity::class,
-        PostEntity::class
+        PostEntity::class,
+        PostLikeEntity::class,
+        PostReportEntity::class
     ],
-    version = 4,
+    version = 6,
     exportSchema = true     // Mantener true para inspección de esquema
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -200,7 +204,7 @@ abstract class AppDatabase : RoomDatabase() {
                                     )
                                     
                                     // Usuarios públicos de ejemplo
-                                    val userId1 = userDao.insertUser(
+                                    userDao.insertUser(
                                         UserEntity(
                                             username = "anime_lover",
                                             email = "anime@example.com",
@@ -210,7 +214,7 @@ abstract class AppDatabase : RoomDatabase() {
                                         )
                                     )
                                     
-                                    val userId2 = userDao.insertUser(
+                                    userDao.insertUser(
                                         UserEntity(
                                             username = "manga_reader",
                                             email = "manga@example.com",
@@ -220,7 +224,7 @@ abstract class AppDatabase : RoomDatabase() {
                                         )
                                     )
                                     
-                                    val userId3 = userDao.insertUser(
+                                    userDao.insertUser(
                                         UserEntity(
                                             username = "gamer_pro",
                                             email = "gamer@example.com",
@@ -229,12 +233,25 @@ abstract class AppDatabase : RoomDatabase() {
                                             role = "USER"
                                         )
                                     )
+                                }
+                                
+                                // Insertar posts de ejemplo si no existen
+                                if (postDao.count() == 0 && userDao.count() > 0) {
+                                    // Obtener IDs de usuarios existentes para los posts
+                                    val maria = userDao.getUserByEmail("anime@example.com")
+                                    val carlos = userDao.getUserByEmail("manga@example.com")
+                                    val ana = userDao.getUserByEmail("gamer@example.com")
+                                    
+                                    // Usar IDs reales de usuarios existentes
+                                    val userId1 = maria?.id ?: userDao.getAll().firstOrNull()?.id ?: 2L
+                                    val userId2 = carlos?.id ?: userDao.getAll().getOrNull(1)?.id ?: 3L
+                                    val userId3 = ana?.id ?: userDao.getAll().getOrNull(2)?.id ?: 4L
                                     
                                     // Insertar posts de ejemplo
                                     postDao.insertPost(
                                         PostEntity(
                                             title = "¿Cuál es tu anime favorito de 2024?",
-                                            content = "Hola a todos! Quería saber cuáles han sido sus animes favoritos de este año.",
+                                            content = "Hola a todos! Quería saber cuáles han sido sus animes favoritos de este año. Personalmente me ha encantado Frieren y Dandadan.",
                                             authorId = userId1,
                                             authorName = "María García",
                                             themeId = 1, // Anime
@@ -246,12 +263,84 @@ abstract class AppDatabase : RoomDatabase() {
                                     postDao.insertPost(
                                         PostEntity(
                                             title = "Recomendaciones de manga para principiantes",
-                                            content = "He leído Death Note y me encantó. ¿Qué otros mangas me recomiendan?",
+                                            content = "He leído Death Note y me encantó. ¿Qué otros mangas me recomiendan? Estoy buscando algo con buena trama y personajes interesantes.",
                                             authorId = userId2,
                                             authorName = "Carlos López",
                                             themeId = 2, // Manga
                                             likes = 12,
                                             comments = 5
+                                        )
+                                    )
+                                    
+                                    postDao.insertPost(
+                                        PostEntity(
+                                            title = "Mi experiencia jugando Elden Ring",
+                                            content = "Después de 100 horas finalmente vencí al último boss! Este juego es increíble, la exploración es adictiva.",
+                                            authorId = userId3,
+                                            authorName = "Ana Rodríguez",
+                                            themeId = 3, // Gaming
+                                            likes = 23,
+                                            comments = 12
+                                        )
+                                    )
+                                    
+                                    postDao.insertPost(
+                                        PostEntity(
+                                            title = "Attack on Titan - Final thoughts",
+                                            content = "Ya que terminó el anime, ¿qué opinan del final? A mí me pareció épico aunque un poco triste. Los momentos emocionales fueron increíbles.",
+                                            authorId = userId1,
+                                            authorName = "María García",
+                                            themeId = 1, // Anime
+                                            likes = 34,
+                                            comments = 18
+                                        )
+                                    )
+                                    
+                                    postDao.insertPost(
+                                        PostEntity(
+                                            title = "One Piece: ¡Capítulo 1000!",
+                                            content = "No puedo creer que ya sean 1000 capítulos! Este manga ha sido parte de mi vida durante años. ¿Cuál ha sido su arco favorito?",
+                                            authorId = userId2,
+                                            authorName = "Carlos López",
+                                            themeId = 2, // Manga
+                                            likes = 28,
+                                            comments = 15
+                                        )
+                                    )
+                                    
+                                    postDao.insertPost(
+                                        PostEntity(
+                                            title = "The Legend of Zelda: Tears of the Kingdom",
+                                            content = "Este juego superó todas mis expectativas. La libertad de exploración y creatividad es impresionante. ¿Ya lo han probado?",
+                                            authorId = userId3,
+                                            authorName = "Ana Rodríguez",
+                                            themeId = 3, // Gaming
+                                            likes = 19,
+                                            comments = 9
+                                        )
+                                    )
+                                    
+                                    postDao.insertPost(
+                                        PostEntity(
+                                            title = "Spy x Family es puro amor",
+                                            content = "Esta serie es perfecta! La combinación de acción, comedia y momentos tiernos está muy bien balanceada. Anya es adorable 🥜",
+                                            authorId = userId1,
+                                            authorName = "María García",
+                                            themeId = 1, // Anime
+                                            likes = 42,
+                                            comments = 22
+                                        )
+                                    )
+                                    
+                                    postDao.insertPost(
+                                        PostEntity(
+                                            title = "Jujutsu Kaisen manga vs anime",
+                                            content = "El manga va mucho más adelante y uff... las cosas se ponen intensas. ¿Prefieren esperar al anime o leer el manga?",
+                                            authorId = userId2,
+                                            authorName = "Carlos López",
+                                            themeId = 2, // Manga
+                                            likes = 17,
+                                            comments = 11
                                         )
                                     )
                                 }
