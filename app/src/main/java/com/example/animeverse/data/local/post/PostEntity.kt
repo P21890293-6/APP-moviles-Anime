@@ -22,6 +22,7 @@ data class PostEntity(
     val authorId: Long,
     val authorName: String,
     val themeId: Int,                   // 1: Anime, 2: Manga, 3: Gaming, 4: General
+    val imageUri: String? = null,       // URI de la imagen adjunta (opcional)
     val createdAt: Long = System.currentTimeMillis(),
     val likes: Int = 0,
     val comments: Int = 0

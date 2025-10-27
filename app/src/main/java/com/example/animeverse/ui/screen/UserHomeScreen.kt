@@ -1,12 +1,22 @@
 package com.example.animeverse.ui.screen
 
+import android.Manifest
+import android.content.Context
+import android.net.Uri
+import android.os.Build
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -16,11 +26,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.example.animeverse.data.local.user.UserEntity
-import android.widget.Toast
-import androidx.compose.ui.platform.LocalContext
+import java.io.File
 
 /**
  * Pantalla principal para usuarios públicos.
@@ -33,10 +49,11 @@ fun UserHomeScreen(
     posts: List<MockPost> = emptyList(),
     onLogout: () -> Unit = {},
     onViewProfile: () -> Unit = {},
-    onCreatePost: (String, String, Int) -> Unit = { _, _, _ -> },
+    onCreatePost: (String, String, Int, String?) -> Unit = { _, _, _, _ -> },
     onLikePost: (Long) -> Unit = {},
     onCommentPost: (Long) -> Unit = {},
     onReportPost: (Long) -> Unit = {},
+    onViewPostDetail: (Long) -> Unit = {},
     onOpenDrawer: () -> Unit = {}
 ) {
     val context = LocalContext.current
@@ -173,7 +190,8 @@ fun UserHomeScreen(
                 onClearFilter = { selectedCategory = null },
                 onLikeClick = onLikePost,
                 onCommentClick = onCommentPost,
-                onReportClick = onReportPost
+                onReportClick = onReportPost,
+                onPostClick = onViewPostDetail
             )
             1 -> ExploreTab(
                 modifier = Modifier.padding(paddingValues),
@@ -197,8 +215,8 @@ fun UserHomeScreen(
     if (showCreatePostDialog) {
         CreatePostDialog(
             onDismiss = { showCreatePostDialog = false },
-            onCreatePost = { title, content, themeId ->
-                onCreatePost(title, content, themeId)
+            onCreatePost = { title, content, themeId, imageUri ->
+                onCreatePost(title, content, themeId, imageUri)
                 Toast.makeText(context, "Publicación creada exitosamente", Toast.LENGTH_SHORT).show()
                 showCreatePostDialog = false
             }
@@ -218,7 +236,8 @@ private fun FeedTab(
     onClearFilter: () -> Unit = {},
     onLikeClick: (Long) -> Unit = {},
     onCommentClick: (Long) -> Unit = {},
-    onReportClick: (Long) -> Unit = {}
+    onReportClick: (Long) -> Unit = {},
+    onPostClick: (Long) -> Unit = {}
 ) {
     LazyColumn(
         modifier = modifier
@@ -297,7 +316,8 @@ private fun FeedTab(
                     post = post,
                     onLikeClick = onLikeClick,
                     onCommentClick = onCommentClick,
-                    onReportClick = onReportClick
+                    onReportClick = onReportClick,
+                    onPostClick = onPostClick
                 )
             }
         }
@@ -316,7 +336,8 @@ private fun PostCard(
     post: MockPost,
     onLikeClick: (Long) -> Unit = {},
     onCommentClick: (Long) -> Unit = {},
-    onReportClick: (Long) -> Unit = {}
+    onReportClick: (Long) -> Unit = {},
+    onPostClick: (Long) -> Unit = {}
 ) {
     val context = LocalContext.current
     var showMenu by remember { mutableStateOf(false) }
@@ -346,7 +367,9 @@ private fun PostCard(
         )
     ) {
         ElevatedCard(
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onPostClick(post.id) }
         ) {
         Column(
             modifier = Modifier.padding(16.dp)
@@ -431,6 +454,23 @@ private fun PostCard(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+            
+            // Mostrar imagen si existe
+            if (post.imageUri != null) {
+                Spacer(modifier = Modifier.height(12.dp))
+                AsyncImage(
+                    model = ImageRequest.Builder(context)
+                        .data(Uri.parse(post.imageUri))
+                        .crossfade(true)
+                        .build(),
+                    contentDescription = "Imagen de ${post.title}",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 150.dp, max = 400.dp)
+                        .clip(MaterialTheme.shapes.medium),
+                    contentScale = ContentScale.Crop
+                )
+            }
             
             Spacer(modifier = Modifier.height(12.dp))
             
@@ -792,12 +832,17 @@ private fun ProfileTab(
 @Composable
 private fun CreatePostDialog(
     onDismiss: () -> Unit,
-    onCreatePost: (String, String, Int) -> Unit
+    onCreatePost: (String, String, Int, String?) -> Unit
 ) {
+    val context = LocalContext.current
     var title by remember { mutableStateOf("") }
     var content by remember { mutableStateOf("") }
     var selectedTheme by remember { mutableStateOf(1) } // 1 = Anime por defecto
     var expandedThemeMenu by remember { mutableStateOf(false) }
+    var imageUri by remember { mutableStateOf<String?>(null) }
+    var showImageOptions by remember { mutableStateOf(false) }
+    var showCameraPermissionDialog by remember { mutableStateOf(false) }
+    var showGalleryPermissionDialog by remember { mutableStateOf(false) }
     
     val themes = mapOf(
         1 to "🎬 Anime",
@@ -806,13 +851,119 @@ private fun CreatePostDialog(
         4 to "💬 General"
     )
     
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Nueva Publicación") },
-        text = {
+    // Variable para almacenar el URI temporal de la cámara
+    var tempPhotoUri by remember { mutableStateOf<Uri?>(null) }
+    
+    // Launcher para captura de imagen
+    val takePictureLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.TakePicture()
+    ) { success ->
+        if (success && tempPhotoUri != null) {
+            imageUri = tempPhotoUri.toString()
+        }
+    }
+    
+    val pickImageLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let { imageUri = it.toString() }
+    }
+    
+    val cameraPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            try {
+                // Crear directorio si no existe
+                val cacheDir = File(context.cacheDir, "images").apply { 
+                    if (!exists()) mkdirs() 
+                }
+                
+                // Crear archivo temporal
+                val photoFile = File(cacheDir, "post_${System.currentTimeMillis()}.jpg")
+                
+                // Crear URI con FileProvider
+                val photoUri = FileProvider.getUriForFile(
+                    context,
+                    "${context.packageName}.fileprovider",
+                    photoFile
+                )
+                
+                tempPhotoUri = photoUri
+                takePictureLauncher.launch(photoUri)
+            } catch (e: Exception) {
+                e.printStackTrace()
+                android.widget.Toast.makeText(
+                    context,
+                    "Error al abrir cámara: ${e.message}",
+                    android.widget.Toast.LENGTH_LONG
+                ).show()
+            }
+        } else {
+            showCameraPermissionDialog = true
+        }
+    }
+    
+    val galleryPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            pickImageLauncher.launch("image/*")
+        } else {
+            showGalleryPermissionDialog = true
+        }
+    }
+    
+    // Diálogos de permisos
+    if (showCameraPermissionDialog) {
+        AlertDialog(
+            onDismissRequest = { showCameraPermissionDialog = false },
+            title = { Text("Permiso de cámara requerido") },
+            text = { Text("Para tomar fotos necesitas otorgar el permiso de cámara.") },
+            confirmButton = {
+                TextButton(onClick = { showCameraPermissionDialog = false }) {
+                    Text("Entendido")
+                }
+            }
+        )
+    }
+    
+    if (showGalleryPermissionDialog) {
+        AlertDialog(
+            onDismissRequest = { showGalleryPermissionDialog = false },
+            title = { Text("Permiso de galería requerido") },
+            text = { Text("Para seleccionar fotos necesitas otorgar el permiso de galería.") },
+            confirmButton = {
+                TextButton(onClick = { showGalleryPermissionDialog = false }) {
+                    Text("Entendido")
+                }
+            }
+        )
+    }
+    
+    Dialog(
+        onDismissRequest = onDismiss
+    ) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .wrapContentHeight(),
+            shape = MaterialTheme.shapes.large
+        ) {
             Column(
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+                    .padding(24.dp)
             ) {
+                // Título
+                Text(
+                    text = "Nueva Publicación",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold
+                )
+                
+                Spacer(modifier = Modifier.height(16.dp))
                 // Selector de tema
                 Text(
                     text = "Categoría",
@@ -847,6 +998,122 @@ private fun CreatePostDialog(
                 
                 Spacer(modifier = Modifier.height(12.dp))
                 
+                // Imagen (opcional)
+                Text(
+                    text = "Imagen (opcional)",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                if (imageUri != null) {
+                    // Mostrar imagen seleccionada
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(200.dp)
+                            .clip(MaterialTheme.shapes.medium)
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
+                    ) {
+                        AsyncImage(
+                            model = ImageRequest.Builder(context)
+                                .data(Uri.parse(imageUri))
+                                .crossfade(true)
+                                .build(),
+                            contentDescription = "Imagen de la publicación",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                        IconButton(
+                            onClick = { imageUri = null },
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .padding(8.dp)
+                                .background(
+                                    MaterialTheme.colorScheme.errorContainer,
+                                    CircleShape
+                                )
+                        ) {
+                            Icon(
+                                Icons.Filled.Close,
+                                "Eliminar imagen",
+                                tint = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                        }
+                    }
+                } else {
+                    // Botones para agregar imagen
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = {
+                                val permission = Manifest.permission.CAMERA
+                                when (ContextCompat.checkSelfPermission(context, permission)) {
+                                    android.content.pm.PackageManager.PERMISSION_GRANTED -> {
+                                        try {
+                                            // Crear directorio si no existe
+                                            val cacheDir = File(context.cacheDir, "images").apply { 
+                                                if (!exists()) mkdirs() 
+                                            }
+                                            
+                                            // Crear archivo temporal
+                                            val photoFile = File(cacheDir, "post_${System.currentTimeMillis()}.jpg")
+                                            
+                                            // Crear URI con FileProvider
+                                            val photoUri = FileProvider.getUriForFile(
+                                                context,
+                                                "${context.packageName}.fileprovider",
+                                                photoFile
+                                            )
+                                            
+                                            tempPhotoUri = photoUri
+                                            takePictureLauncher.launch(photoUri)
+                                        } catch (e: Exception) {
+                                            e.printStackTrace()
+                                            android.widget.Toast.makeText(
+                                                context,
+                                                "Error al abrir cámara: ${e.message}",
+                                                android.widget.Toast.LENGTH_LONG
+                                            ).show()
+                                        }
+                                    }
+                                    else -> cameraPermissionLauncher.launch(permission)
+                                }
+                            },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(Icons.Filled.CameraAlt, null, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Cámara", style = MaterialTheme.typography.labelMedium)
+                        }
+                        
+                        OutlinedButton(
+                            onClick = {
+                                val permission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                    Manifest.permission.READ_MEDIA_IMAGES
+                                } else {
+                                    Manifest.permission.READ_EXTERNAL_STORAGE
+                                }
+                                when (ContextCompat.checkSelfPermission(context, permission)) {
+                                    android.content.pm.PackageManager.PERMISSION_GRANTED -> {
+                                        pickImageLauncher.launch("image/*")
+                                    }
+                                    else -> galleryPermissionLauncher.launch(permission)
+                                }
+                            },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(Icons.Filled.Image, null, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Galería", style = MaterialTheme.typography.labelMedium)
+                        }
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(12.dp))
+                
                 OutlinedTextField(
                     value = title,
                     onValueChange = { title = it },
@@ -871,22 +1138,31 @@ private fun CreatePostDialog(
                         unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.7f)
                     )
                 )
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = { onCreatePost(title, content, selectedTheme) },
-                enabled = title.isNotBlank() && content.isNotBlank()
-            ) {
-                Text("Publicar")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancelar")
+                
+                Spacer(modifier = Modifier.height(24.dp))
+                
+                // Botones de acción
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Cancelar")
+                    }
+                    Button(
+                        onClick = { onCreatePost(title, content, selectedTheme, imageUri) },
+                        enabled = title.isNotBlank() && content.isNotBlank(),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Publicar")
+                    }
+                }
             }
         }
-    )
+    }
 }
 
 /**
@@ -898,6 +1174,7 @@ data class MockPost(
     val title: String,
     val content: String,
     val category: String,
+    val imageUri: String? = null,
     val likes: Int,
     val comments: Int
 )

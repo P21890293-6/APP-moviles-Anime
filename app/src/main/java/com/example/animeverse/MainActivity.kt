@@ -19,6 +19,7 @@ import com.example.animeverse.ui.screen.LoginScreen
 import com.example.animeverse.ui.screen.RegisterScreen
 import com.example.animeverse.ui.screen.AdminDashboard
 import com.example.animeverse.ui.screen.UserHomeScreen
+import com.example.animeverse.ui.screen.PostDetailScreen
 import com.example.animeverse.ui.screen.SettingsScreen
 import com.example.animeverse.ui.screen.ChangePasswordScreen
 import com.example.animeverse.ui.screen.EditProfileScreenVm
@@ -138,6 +139,7 @@ fun AnimeVerseApp(authViewModel: AuthViewModel) {
         is Screen.Settings -> screen.user
         is Screen.ChangePassword -> screen.user
         is Screen.EditProfile -> screen.user
+        is Screen.PostDetail -> screen.user
         else -> null
     }
     
@@ -166,6 +168,7 @@ fun AnimeVerseApp(authViewModel: AuthViewModel) {
                         title = post.title,
                         content = post.content,
                         category = themeName,
+                        imageUri = post.imageUri,
                         likes = post.likes,
                         comments = post.comments
                     )
@@ -258,7 +261,8 @@ fun AnimeVerseApp(authViewModel: AuthViewModel) {
                     if (currentScreen !is Screen.UserHome && 
                         currentScreen !is Screen.Settings && 
                         currentScreen !is Screen.ChangePassword &&
-                        currentScreen !is Screen.EditProfile) {
+                        currentScreen !is Screen.EditProfile &&
+                        currentScreen !is Screen.PostDetail) {
                         AppTopBar(
                             title = when (currentScreen) {
                                 is Screen.AdminDashboard -> "Panel de Administrador"
@@ -431,7 +435,7 @@ fun AnimeVerseApp(authViewModel: AuthViewModel) {
                                 }
                             }
                         },
-                        onCreatePost = { title, content, themeId: Int ->
+                        onCreatePost = { title, content, themeId: Int, imageUri: String? ->
                             scope.launch {
                                 // Crear nueva publicación en la base de datos
                                 val newPost = com.example.animeverse.data.local.post.PostEntity(
@@ -439,7 +443,8 @@ fun AnimeVerseApp(authViewModel: AuthViewModel) {
                                     content = content,
                                     authorId = screen.user.id,
                                     authorName = screen.user.fullName,
-                                    themeId = themeId
+                                    themeId = themeId,
+                                    imageUri = imageUri
                                 )
                                 database.postDao().insertPost(newPost)
                                 
@@ -463,6 +468,72 @@ fun AnimeVerseApp(authViewModel: AuthViewModel) {
                                     )
                                 }
                             }
+                        },
+                        onViewPostDetail = { postId ->
+                            // Buscar el post en mockPosts
+                            val post = mockPosts.find { it.id == postId }
+                            if (post != null) {
+                                currentScreen = Screen.PostDetail(
+                                    user = screen.user,
+                                    postId = post.id,
+                                    authorName = post.authorName,
+                                    title = post.title,
+                                    content = post.content,
+                                    category = post.category,
+                                    imageUri = post.imageUri,
+                                    likes = post.likes,
+                                    comments = post.comments
+                                )
+                            }
+                        }
+                    )
+                    is Screen.PostDetail -> PostDetailScreen(
+                        postId = screen.postId,
+                        authorName = screen.authorName,
+                        title = screen.title,
+                        content = screen.content,
+                        category = screen.category,
+                        imageUri = screen.imageUri,
+                        likes = screen.likes,
+                        comments = screen.comments,
+                        onBackClick = {
+                            currentScreen = Screen.UserHome(screen.user)
+                        },
+                        onLikeClick = {
+                            scope.launch {
+                                val userId = screen.user.id
+                                val hasLiked = database.postDao().hasUserLiked(screen.postId, userId)
+                                
+                                if (hasLiked) {
+                                    database.postDao().deleteLike(screen.postId, userId)
+                                    database.postDao().decrementLikes(screen.postId)
+                                } else {
+                                    database.postDao().insertLike(
+                                        com.example.animeverse.data.local.post.PostLikeEntity(
+                                            postId = screen.postId,
+                                            userId = userId
+                                        )
+                                    )
+                                    database.postDao().incrementLikes(screen.postId)
+                                }
+                                
+                                // Recargar publicaciones
+                                allPosts = database.postDao().getAll()
+                            }
+                        },
+                        onCommentClick = {
+                            android.widget.Toast.makeText(
+                                context,
+                                "Sistema de comentarios próximamente",
+                                android.widget.Toast.LENGTH_SHORT
+                            ).show()
+                        },
+                        onShareClick = {
+                            android.widget.Toast.makeText(
+                                context,
+                                "Compartir próximamente",
+                                android.widget.Toast.LENGTH_SHORT
+                            ).show()
                         }
                     )
                     is Screen.Settings -> {
@@ -605,5 +676,16 @@ sealed class Screen {
     data class Settings(val user: com.example.animeverse.data.local.user.UserEntity) : Screen()
     data class ChangePassword(val user: com.example.animeverse.data.local.user.UserEntity) : Screen()
     data class EditProfile(val user: com.example.animeverse.data.local.user.UserEntity) : Screen()
+    data class PostDetail(
+        val user: com.example.animeverse.data.local.user.UserEntity,
+        val postId: Long,
+        val authorName: String,
+        val title: String,
+        val content: String,
+        val category: String,
+        val imageUri: String?,
+        val likes: Int,
+        val comments: Int
+    ) : Screen()
 }
 

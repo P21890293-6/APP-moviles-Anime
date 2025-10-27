@@ -49,7 +49,7 @@ import java.util.*
         PostLikeEntity::class,
         PostReportEntity::class
     ],
-    version = 7,
+    version = 8,
     exportSchema = true     // Mantener true para inspección de esquema
 )
 abstract class AppDatabase : RoomDatabase() {
