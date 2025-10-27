@@ -19,6 +19,7 @@ data class UserEntity(
     val email: String,
     val password: String,               // En producción debería estar hasheada
     val fullName: String,
+    val phoneNumber: String? = null,    // Número de teléfono
     val avatar: String? = null,
     val role: String = "USER",          // Rol: USER o ADMIN
     val banned: Boolean = false,        // Si está baneado o no

@@ -20,6 +20,7 @@ import com.example.animeverse.ui.screen.RegisterScreen
 import com.example.animeverse.ui.screen.AdminDashboard
 import com.example.animeverse.ui.screen.UserHomeScreen
 import com.example.animeverse.ui.screen.SettingsScreen
+import com.example.animeverse.ui.screen.ChangePasswordScreen
 import com.example.animeverse.ui.screen.EditProfileScreenVm
 import com.example.animeverse.ui.screen.MockPost
 import com.example.animeverse.data.local.user.isAdmin
@@ -135,6 +136,7 @@ fun AnimeVerseApp(authViewModel: AuthViewModel) {
         is Screen.AdminDashboard -> screen.user
         is Screen.UserHome -> screen.user
         is Screen.Settings -> screen.user
+        is Screen.ChangePassword -> screen.user
         is Screen.EditProfile -> screen.user
         else -> null
     }
@@ -239,9 +241,9 @@ fun AnimeVerseApp(authViewModel: AuthViewModel) {
                                 scope.launch { drawerState.close() }
                                 goRegister()
                             },
-                            onEditProfile = {
+                            onSettings = {
                                 scope.launch { drawerState.close() }
-                                goEditProfile()
+                                goSettings()
                             }
                         ),
                         onLogout = onLogout,
@@ -255,6 +257,7 @@ fun AnimeVerseApp(authViewModel: AuthViewModel) {
                     // Ocultar la barra superior para pantallas que tienen su propia barra
                     if (currentScreen !is Screen.UserHome && 
                         currentScreen !is Screen.Settings && 
+                        currentScreen !is Screen.ChangePassword &&
                         currentScreen !is Screen.EditProfile) {
                         AppTopBar(
                             title = when (currentScreen) {
@@ -474,12 +477,8 @@ fun AnimeVerseApp(authViewModel: AuthViewModel) {
                                 currentScreen = Screen.EditProfile(screen.user)
                             },
                             onChangePassword = {
-                                // TODO: Implementar cambio de contraseña
-                                android.widget.Toast.makeText(
-                                    context,
-                                    "Función próximamente disponible",
-                                    android.widget.Toast.LENGTH_SHORT
-                                ).show()
+                                // Ir a cambiar contraseña
+                                currentScreen = Screen.ChangePassword(screen.user)
                             },
                             onPrivacySettings = {
                                 // TODO: Implementar configuración de privacidad
@@ -496,6 +495,19 @@ fun AnimeVerseApp(authViewModel: AuthViewModel) {
                                     "AnimeVerse v1.0.0",
                                     android.widget.Toast.LENGTH_SHORT
                                 ).show()
+                            }
+                        )
+                    }
+                    is Screen.ChangePassword -> {
+                        ChangePasswordScreen(
+                            currentUser = screen.user,
+                            onBackClick = {
+                                // Volver a Settings
+                                currentScreen = Screen.Settings(screen.user)
+                            },
+                            onPasswordChanged = {
+                                // Contraseña cambiada, volver a Settings
+                                currentScreen = Screen.Settings(screen.user)
                             }
                         )
                     }
@@ -591,6 +603,7 @@ sealed class Screen {
     data class AdminDashboard(val user: com.example.animeverse.data.local.user.UserEntity) : Screen()
     data class UserHome(val user: com.example.animeverse.data.local.user.UserEntity) : Screen()
     data class Settings(val user: com.example.animeverse.data.local.user.UserEntity) : Screen()
+    data class ChangePassword(val user: com.example.animeverse.data.local.user.UserEntity) : Screen()
     data class EditProfile(val user: com.example.animeverse.data.local.user.UserEntity) : Screen()
 }
 

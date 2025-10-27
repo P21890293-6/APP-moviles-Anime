@@ -1,5 +1,7 @@
 package com.example.animeverse.ui.screen
 
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -12,6 +14,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -114,7 +117,17 @@ fun UserHomeScreen(
             )
         },
         floatingActionButton = {
-            if (selectedTab == 0) {
+            // Animación del FAB al aparecer/desaparecer
+            AnimatedVisibility(
+                visible = selectedTab == 0,
+                enter = scaleIn(
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                        stiffness = Spring.StiffnessLow
+                    )
+                ) + fadeIn(),
+                exit = scaleOut() + fadeOut()
+            ) {
                 ExtendedFloatingActionButton(
                     onClick = { showCreatePostDialog = true },
                     icon = { Icon(Icons.Filled.Add, "Crear publicación") },
@@ -173,6 +186,7 @@ fun UserHomeScreen(
             2 -> ProfileTab(
                 modifier = Modifier.padding(paddingValues),
                 currentUser = currentUser,
+                posts = posts,
                 onLogout = onLogout,
                 onEditProfile = onViewProfile
             )
@@ -213,44 +227,63 @@ private fun FeedTab(
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         // Mostrar saludo solo cuando NO hay categoría seleccionada
-        if (selectedCategory == null) {
-            item {
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = "Hola, ${currentUser.fullName} 👋",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    text = "¿Qué anime estás viendo hoy?",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-            }
-        } else {
-            // Mostrar encabezado de categoría cuando está filtrado
-            item {
-                Spacer(modifier = Modifier.height(16.dp))
-                val categoryIcon = when (selectedCategory) {
-                    "Anime" -> "🎬"
-                    "Manga" -> "📚"
-                    "Gaming" -> "🎮"
-                    "General" -> "💬"
-                    else -> "📂"
+        // Animación del saludo al aparecer/desaparecer
+        item {
+            AnimatedVisibility(
+                visible = selectedCategory == null,
+                enter = fadeIn(animationSpec = tween(300)) + expandVertically(),
+                exit = fadeOut(animationSpec = tween(200)) + shrinkVertically()
+            ) {
+                Column {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Hola, ${currentUser.fullName} 👋",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "¿Qué anime estás viendo hoy?",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
                 }
-                Text(
-                    text = "$categoryIcon $selectedCategory",
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
+            }
+        }
+        
+        // Animación del encabezado de categoría
+        item {
+            AnimatedVisibility(
+                visible = selectedCategory != null,
+                enter = fadeIn(animationSpec = tween(300)) + slideInVertically(
+                    initialOffsetY = { -it / 2 }
+                ),
+                exit = fadeOut(animationSpec = tween(200)) + slideOutVertically(
+                    targetOffsetY = { -it / 2 }
                 )
-                Text(
-                    text = "${posts.size} publicaciones",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(modifier = Modifier.height(8.dp))
+            ) {
+                Column {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    val categoryIcon = when (selectedCategory) {
+                        "Anime" -> "🎬"
+                        "Manga" -> "📚"
+                        "Gaming" -> "🎮"
+                        "General" -> "💬"
+                        else -> "📂"
+                    }
+                    Text(
+                        text = "$categoryIcon $selectedCategory",
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        text = "${posts.size} publicaciones",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
             }
         }
         
@@ -287,10 +320,34 @@ private fun PostCard(
 ) {
     val context = LocalContext.current
     var showMenu by remember { mutableStateOf(false) }
+    var isLiked by remember { mutableStateOf(false) }
     
-    ElevatedCard(
-        modifier = Modifier.fillMaxWidth()
+    // Animación de escala para el botón de like
+    val likeScale by animateFloatAsState(
+        targetValue = if (isLiked) 1.2f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMedium
+        ),
+        label = "likeScale"
+    )
+    
+    // Animación de entrada del card
+    var visible by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        visible = true
+    }
+    
+    AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn(animationSpec = tween(300)) + slideInVertically(
+            initialOffsetY = { it / 4 },
+            animationSpec = tween(400, easing = FastOutSlowInEasing)
+        )
     ) {
+        ElevatedCard(
+            modifier = Modifier.fillMaxWidth()
+        ) {
         Column(
             modifier = Modifier.padding(16.dp)
         ) {
@@ -383,10 +440,19 @@ private fun PostCard(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 FilledTonalButton(
-                    onClick = { onLikeClick(post.id) },
+                    onClick = {
+                        isLiked = !isLiked
+                        onLikeClick(post.id)
+                    },
                     modifier = Modifier.weight(1f)
                 ) {
-                    Icon(Icons.Filled.ThumbUp, null, modifier = Modifier.size(16.dp))
+                    Icon(
+                        Icons.Filled.ThumbUp, 
+                        null, 
+                        modifier = Modifier
+                            .size(16.dp)
+                            .scale(likeScale)
+                    )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text("Me gusta (${post.likes})")
                 }
@@ -399,6 +465,7 @@ private fun PostCard(
                     Text("Comentar (${post.comments})")
                 }
             }
+        }
         }
     }
 }
@@ -557,9 +624,14 @@ private fun CategoryCard(
 private fun ProfileTab(
     modifier: Modifier = Modifier,
     currentUser: UserEntity,
+    posts: List<MockPost> = emptyList(),
     onLogout: () -> Unit,
     onEditProfile: () -> Unit = {}
 ) {
+    // Calcular estadísticas reales del usuario
+    val userPostsCount = posts.count { it.authorName == currentUser.fullName }
+    val userCommentsCount = posts.filter { it.authorName == currentUser.fullName }
+        .sumOf { it.comments }
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
@@ -637,7 +709,7 @@ private fun ProfileTab(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(
-                            text = "12",
+                            text = userPostsCount.toString(),
                             style = MaterialTheme.typography.headlineMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary
@@ -656,7 +728,7 @@ private fun ProfileTab(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(
-                            text = "48",
+                            text = userCommentsCount.toString(),
                             style = MaterialTheme.typography.headlineMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary

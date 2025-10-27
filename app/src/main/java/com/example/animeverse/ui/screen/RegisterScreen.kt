@@ -1,6 +1,7 @@
 package com.example.animeverse.ui.screen
 
 import android.widget.Toast
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -13,6 +14,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -43,6 +45,25 @@ fun RegisterScreen(
     // Estados locales UI
     var showPassword by remember { mutableStateOf(false) }
     var showConfirmPassword by remember { mutableStateOf(false) }
+    
+    // Animación de shake para errores
+    var shakeKey by remember { mutableStateOf(0) }
+    val shakeOffset by animateFloatAsState(
+        targetValue = if (shakeKey % 2 == 0) 0f else 10f,
+        animationSpec = repeatable(
+            iterations = 3,
+            animation = tween(durationMillis = 50),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "shakeAnimation"
+    )
+    
+    // Trigger shake cuando hay error
+    LaunchedEffect(state.errorMsg) {
+        if (state.errorMsg != null) {
+            shakeKey++
+        }
+    }
     
     // Verificar si registro fue exitoso
     LaunchedEffect(state.success) {
@@ -126,6 +147,15 @@ fun RegisterScreen(
                         .fillMaxWidth()
                         .padding(start = 16.dp, top = 4.dp)
                 )
+            } else {
+                Text(
+                    text = "Solo letras y espacios permitidos",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.labelSmall,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 16.dp, top = 4.dp)
+                )
             }
             
             Spacer(Modifier.height(12.dp))
@@ -152,6 +182,46 @@ fun RegisterScreen(
                 Text(
                     text = state.emailError!!,
                     color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.labelSmall,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 16.dp, top = 4.dp)
+                )
+            }
+            
+            Spacer(Modifier.height(12.dp))
+            
+            // Campo Número de Teléfono
+            OutlinedTextField(
+                value = state.phoneNumber,
+                onValueChange = viewModel::onRegisterPhoneNumberChange,
+                label = { Text("Número de teléfono") },
+                singleLine = true,
+                isError = state.phoneNumberError != null,
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Phone
+                ),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                    focusedContainerColor = MaterialTheme.colorScheme.surface,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surface
+                ),
+                modifier = Modifier.fillMaxWidth()
+            )
+            if (state.phoneNumberError != null) {
+                Text(
+                    text = state.phoneNumberError!!,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.labelSmall,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 16.dp, top = 4.dp)
+                )
+            } else {
+                Text(
+                    text = "Solo números (8-15 dígitos)",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     style = MaterialTheme.typography.labelSmall,
                     modifier = Modifier
                         .fillMaxWidth()
@@ -201,6 +271,15 @@ fun RegisterScreen(
                 Text(
                     text = state.passwordError!!,
                     color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.labelSmall,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 16.dp, top = 4.dp)
+                )
+            } else {
+                Text(
+                    text = "Mínimo 8 caracteres: mayúscula, minúscula, número y símbolo",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     style = MaterialTheme.typography.labelSmall,
                     modifier = Modifier
                         .fillMaxWidth()
@@ -259,11 +338,15 @@ fun RegisterScreen(
             
             Spacer(Modifier.height(24.dp))
             
-            // Botón Registrar
+            // Botón Registrar (con animación de shake en error)
             Button(
                 onClick = viewModel::submitRegister,
                 enabled = state.canSubmit && !state.isSubmitting,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .graphicsLayer {
+                        translationX = shakeOffset
+                    }
             ) {
                 if (state.isSubmitting) {
                     CircularProgressIndicator(
@@ -278,14 +361,17 @@ fun RegisterScreen(
                 }
             }
             
-            // Mensaje de error global
+            // Mensaje de error global (con animación de shake)
             if (state.errorMsg != null) {
                 Spacer(Modifier.height(8.dp))
                 Text(
                     text = state.errorMsg!!,
                     color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.bodySmall,
-                    textAlign = TextAlign.Center
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.graphicsLayer {
+                        translationX = shakeOffset
+                    }
                 )
             }
             

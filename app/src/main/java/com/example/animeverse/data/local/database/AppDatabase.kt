@@ -49,7 +49,7 @@ import java.util.*
         PostLikeEntity::class,
         PostReportEntity::class
     ],
-    version = 6,
+    version = 7,
     exportSchema = true     // Mantener true para inspección de esquema
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -193,12 +193,13 @@ abstract class AppDatabase : RoomDatabase() {
                                 // Insertar usuarios del sistema simple si no existen
                                 if (userDao.count() == 0) {
                                     // Usuario ADMIN por defecto
-                                    val adminId = userDao.insertUser(
+                                    val adminId =                                     userDao.insertUser(
                                         UserEntity(
                                             username = "admin",
                                             email = "admin@animeverse.com",
-                                            password = "admin123",
+                                            password = "Admin@123",
                                             fullName = "Administrador",
+                                            phoneNumber = "12345678",
                                             role = "ADMIN"
                                         )
                                     )
@@ -208,8 +209,9 @@ abstract class AppDatabase : RoomDatabase() {
                                         UserEntity(
                                             username = "anime_lover",
                                             email = "anime@example.com",
-                                            password = "123456",
+                                            password = "Maria@123",
                                             fullName = "María García",
+                                            phoneNumber = "87654321",
                                             role = "USER"
                                         )
                                     )
@@ -218,8 +220,9 @@ abstract class AppDatabase : RoomDatabase() {
                                         UserEntity(
                                             username = "manga_reader",
                                             email = "manga@example.com",
-                                            password = "123456",
+                                            password = "Carlos@123",
                                             fullName = "Carlos López",
+                                            phoneNumber = "11223344",
                                             role = "USER"
                                         )
                                     )
@@ -228,8 +231,9 @@ abstract class AppDatabase : RoomDatabase() {
                                         UserEntity(
                                             username = "gamer_pro",
                                             email = "gamer@example.com",
-                                            password = "123456",
+                                            password = "Ana@123",
                                             fullName = "Ana Rodríguez",
+                                            phoneNumber = "55667788",
                                             role = "USER"
                                         )
                                     )

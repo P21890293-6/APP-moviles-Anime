@@ -15,24 +15,27 @@ object MockData {
             id = 1,
             username = "anime_lover",
             email = "anime@example.com",
-            password = "123456",
+            password = "Maria@123",
             fullName = "María García",
+            phoneNumber = "87654321",
             avatar = null
         ),
         UserEntity(
             id = 2,
             username = "manga_reader",
             email = "manga@example.com", 
-            password = "123456",
+            password = "Carlos@123",
             fullName = "Carlos López",
+            phoneNumber = "11223344",
             avatar = null
         ),
         UserEntity(
             id = 3,
             username = "gamer_pro",
             email = "gamer@example.com",
-            password = "123456", 
+            password = "Ana@123", 
             fullName = "Ana Rodríguez",
+            phoneNumber = "55667788",
             avatar = null
         )
     )

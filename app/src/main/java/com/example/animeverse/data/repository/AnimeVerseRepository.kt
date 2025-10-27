@@ -163,7 +163,8 @@ class AnimeVerseRepository(
         username: String, 
         email: String, 
         password: String, 
-        fullName: String
+        fullName: String,
+        phoneNumber: String? = null
     ): Result<Long> {
         val existsEmail = userDao.getUserByEmail(email) != null
         val existsUsername = userDao.getUserByUsername(username) != null
@@ -180,7 +181,8 @@ class AnimeVerseRepository(
                 username = username,
                 email = email,
                 password = password,
-                fullName = fullName
+                fullName = fullName,
+                phoneNumber = phoneNumber
             )
         )
         return Result.success(id)

@@ -221,7 +221,7 @@ fun drawerItemsForUser(
     onHome: () -> Unit,
     onLogin: () -> Unit,
     onRegister: () -> Unit,
-    onEditProfile: () -> Unit
+    onSettings: () -> Unit
 ): List<DrawerItem> {
     return if (currentUser != null) {
         // Usuario logueado
@@ -230,15 +230,14 @@ fun drawerItemsForUser(
             listOf(
                 DrawerItem("Panel de Control", Icons.Filled.Dashboard, onHome),
                 DrawerItem("Usuarios", Icons.Filled.People, onHome),
-                DrawerItem("Editar Perfil", Icons.Filled.Edit, onEditProfile)
+                DrawerItem("Configuración", Icons.Filled.Settings, onSettings)
             )
         } else {
             // Items para usuario público
             listOf(
                 DrawerItem("Inicio", Icons.Filled.Home, onHome),
                 DrawerItem("Explorar", Icons.Filled.Explore, onHome),
-                DrawerItem("Mi Perfil", Icons.Filled.Person, onHome),
-                DrawerItem("Editar Perfil", Icons.Filled.Edit, onEditProfile)
+                DrawerItem("Configuración", Icons.Filled.Settings, onSettings)
             )
         }
     } else {

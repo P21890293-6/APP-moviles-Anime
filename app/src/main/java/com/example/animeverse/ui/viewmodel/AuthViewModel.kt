@@ -86,8 +86,9 @@ class AuthViewModel(
                         UserEntity(
                             username = "admin",
                             email = "admin@animeverse.com",
-                            password = "admin123",
+                            password = "Admin@123",
                             fullName = "Administrador",
+                            phoneNumber = "12345678",
                             role = "ADMIN"
                         )
                     )
@@ -97,8 +98,9 @@ class AuthViewModel(
                         UserEntity(
                             username = "anime_lover",
                             email = "anime@example.com",
-                            password = "123456",
+                            password = "Maria@123",
                             fullName = "María García",
+                            phoneNumber = "87654321",
                             role = "USER"
                         )
                     )
@@ -107,8 +109,9 @@ class AuthViewModel(
                         UserEntity(
                             username = "manga_reader",
                             email = "manga@example.com",
-                            password = "123456",
+                            password = "Carlos@123",
                             fullName = "Carlos López",
+                            phoneNumber = "11223344",
                             role = "USER"
                         )
                     )
@@ -117,8 +120,9 @@ class AuthViewModel(
                         UserEntity(
                             username = "gamer_pro",
                             email = "gamer@example.com",
-                            password = "123456",
+                            password = "Ana@123",
                             fullName = "Ana Rodríguez",
+                            phoneNumber = "55667788",
                             role = "USER"
                         )
                     )
@@ -191,6 +195,15 @@ class AuthViewModel(
         validateRegisterForm()
     }
 
+    fun onRegisterPhoneNumberChange(phoneNumber: String) {
+        _registerState.value = _registerState.value.copy(
+            phoneNumber = phoneNumber,
+            phoneNumberError = null,
+            errorMsg = null
+        )
+        validateRegisterForm()
+    }
+
     fun onRegisterPasswordChange(password: String) {
         _registerState.value = _registerState.value.copy(
             password = password,
@@ -217,6 +230,7 @@ class AuthViewModel(
         val state = _registerState.value
         val canSubmit = state.name.isNotBlank() &&
                 state.email.isNotBlank() &&
+                state.phoneNumber.isNotBlank() &&
                 state.password.isNotBlank() &&
                 state.confirmPassword.isNotBlank()
         _registerState.value = state.copy(canSubmit = canSubmit)
@@ -229,11 +243,14 @@ class AuthViewModel(
         var hasError = false
 
         if (state.name.isBlank()) {
-            _registerState.value = state.copy(nameError = "El nombre es requerido")
+            _registerState.value = state.copy(nameError = "El nombre es obligatorio")
             hasError = true
-        } else if (state.name.length < 3) {
-            _registerState.value = state.copy(nameError = "Mínimo 3 caracteres")
-            hasError = true
+        } else {
+            val regex = Regex("^[A-Za-zÁÉÍÓÚÑáéíóúñ ]+$")
+            if (!regex.matches(state.name)) {
+                _registerState.value = state.copy(nameError = "Solo letras y espacios")
+                hasError = true
+            }
         }
 
         if (state.email.isBlank()) {
@@ -244,11 +261,37 @@ class AuthViewModel(
             hasError = true
         }
 
-        if (state.password.isBlank()) {
-            _registerState.value = state.copy(passwordError = "La contraseña es requerida")
+        if (state.phoneNumber.isBlank()) {
+            _registerState.value = state.copy(phoneNumberError = "El teléfono es obligatorio")
             hasError = true
-        } else if (state.password.length < 6) {
-            _registerState.value = state.copy(passwordError = "Mínimo 6 caracteres")
+        } else if (!state.phoneNumber.all { it.isDigit() }) {
+            _registerState.value = state.copy(phoneNumberError = "Solo números")
+            hasError = true
+        } else if (state.phoneNumber.length !in 8..15) {
+            _registerState.value = state.copy(phoneNumberError = "Debe tener entre 8 y 15 dígitos")
+            hasError = true
+        }
+
+        if (state.password.isBlank()) {
+            _registerState.value = state.copy(passwordError = "La contraseña es obligatoria")
+            hasError = true
+        } else if (state.password.length < 8) {
+            _registerState.value = state.copy(passwordError = "Mínimo 8 caracteres")
+            hasError = true
+        } else if (!state.password.any { it.isUpperCase() }) {
+            _registerState.value = state.copy(passwordError = "Debe incluir una mayúscula")
+            hasError = true
+        } else if (!state.password.any { it.isLowerCase() }) {
+            _registerState.value = state.copy(passwordError = "Debe incluir una minúscula")
+            hasError = true
+        } else if (!state.password.any { it.isDigit() }) {
+            _registerState.value = state.copy(passwordError = "Debe incluir un número")
+            hasError = true
+        } else if (!state.password.any { !it.isLetterOrDigit() }) {
+            _registerState.value = state.copy(passwordError = "Debe incluir un símbolo")
+            hasError = true
+        } else if (state.password.contains(' ')) {
+            _registerState.value = state.copy(passwordError = "No debe contener espacios")
             hasError = true
         }
 
@@ -286,6 +329,7 @@ class AuthViewModel(
                     email = state.email,
                     password = state.password,  // En producción usar hash
                     fullName = state.name,
+                    phoneNumber = state.phoneNumber,
                     avatar = state.photoUri,
                     createdAt = System.currentTimeMillis()
                 )
@@ -331,11 +375,13 @@ data class LoginState(
 data class RegisterState(
     val name: String = "",
     val email: String = "",
+    val phoneNumber: String = "",
     val password: String = "",
     val confirmPassword: String = "",
     val photoUri: String? = null,
     val nameError: String? = null,
     val emailError: String? = null,
+    val phoneNumberError: String? = null,
     val passwordError: String? = null,
     val confirmError: String? = null,
     val canSubmit: Boolean = false,
