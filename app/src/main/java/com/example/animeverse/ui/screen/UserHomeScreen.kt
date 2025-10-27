@@ -12,6 +12,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.animeverse.data.local.user.UserEntity
@@ -32,11 +33,20 @@ fun UserHomeScreen(
     onCreatePost: (String, String, Int) -> Unit = { _, _, _ -> },
     onLikePost: (Long) -> Unit = {},
     onCommentPost: (Long) -> Unit = {},
-    onReportPost: (Long) -> Unit = {}
+    onReportPost: (Long) -> Unit = {},
+    onOpenDrawer: () -> Unit = {}
 ) {
     val context = LocalContext.current
     var showCreatePostDialog by remember { mutableStateOf(false) }
     var selectedTab by remember { mutableStateOf(0) }
+    var selectedCategory by remember { mutableStateOf<String?>(null) }
+    
+    // Filtrar posts según categoría seleccionada
+    val filteredPosts = if (selectedCategory != null) {
+        posts.filter { it.category == selectedCategory }
+    } else {
+        posts
+    }
     
     Scaffold(
         topBar = {
@@ -46,12 +56,44 @@ fun UserHomeScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "🎌 AnimeVerse",
+                            text = if (selectedCategory != null) "Categoría: $selectedCategory" else "🎌 AnimeVerse",
                             style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
                         )
                     }
                 },
+                navigationIcon = {
+                    if (selectedCategory != null) {
+                        // Mostrar flecha de retroceso cuando hay categoría
+                        IconButton(onClick = { 
+                            // Limpiar categoría y volver a la pestaña Explorar
+                            selectedCategory = null
+                            selectedTab = 1
+                        }) {
+                            Icon(
+                                imageVector = Icons.Filled.ArrowBack,
+                                contentDescription = "Volver",
+                                tint = Color.White
+                            )
+                        }
+                    } else {
+                        // Mostrar menú hamburguesa cuando NO hay categoría
+                        IconButton(onClick = onOpenDrawer) {
+                            Icon(
+                                imageVector = Icons.Filled.Menu,
+                                contentDescription = "Abrir menú",
+                                tint = Color.White
+                            )
+                        }
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color(0xFF6B4C6D),  // Rosado oscuro/morado
+                    titleContentColor = Color.White,
+                    actionIconContentColor = Color.White,
+                    navigationIconContentColor = Color.White
+                ),
                 actions = {
                     IconButton(onClick = onViewProfile) {
                         Box(
@@ -68,13 +110,7 @@ fun UserHomeScreen(
                             )
                         }
                     }
-                    IconButton(onClick = onLogout) {
-                        Icon(Icons.Filled.Logout, "Cerrar sesión")
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                )
+                }
             )
         },
         floatingActionButton = {
@@ -87,25 +123,31 @@ fun UserHomeScreen(
             }
         },
         bottomBar = {
-            NavigationBar {
-                NavigationBarItem(
-                    selected = selectedTab == 0,
-                    onClick = { selectedTab = 0 },
-                    icon = { Icon(Icons.Filled.Home, "Inicio") },
-                    label = { Text("Inicio") }
-                )
-                NavigationBarItem(
-                    selected = selectedTab == 1,
-                    onClick = { selectedTab = 1 },
-                    icon = { Icon(Icons.Filled.Explore, "Explorar") },
-                    label = { Text("Explorar") }
-                )
-                NavigationBarItem(
-                    selected = selectedTab == 2,
-                    onClick = { selectedTab = 2 },
-                    icon = { Icon(Icons.Filled.Person, "Perfil") },
-                    label = { Text("Perfil") }
-                )
+            // Ocultar la barra de navegación cuando se selecciona una categoría
+            if (selectedCategory == null) {
+                NavigationBar(
+                    containerColor = Color(0xFF1C1B1F),  // Color oscuro
+                    contentColor = Color.White
+                ) {
+                    NavigationBarItem(
+                        selected = selectedTab == 0,
+                        onClick = { selectedTab = 0 },
+                        icon = { Icon(Icons.Filled.Home, "Inicio") },
+                        label = { Text("Inicio") }
+                    )
+                    NavigationBarItem(
+                        selected = selectedTab == 1,
+                        onClick = { selectedTab = 1 },
+                        icon = { Icon(Icons.Filled.Explore, "Explorar") },
+                        label = { Text("Explorar") }
+                    )
+                    NavigationBarItem(
+                        selected = selectedTab == 2,
+                        onClick = { selectedTab = 2 },
+                        icon = { Icon(Icons.Filled.Person, "Perfil") },
+                        label = { Text("Perfil") }
+                    )
+                }
             }
         }
     ) { paddingValues ->
@@ -113,12 +155,21 @@ fun UserHomeScreen(
             0 -> FeedTab(
                 modifier = Modifier.padding(paddingValues),
                 currentUser = currentUser,
-                posts = posts,
+                posts = filteredPosts,
+                selectedCategory = selectedCategory,
+                onClearFilter = { selectedCategory = null },
                 onLikeClick = onLikePost,
                 onCommentClick = onCommentPost,
                 onReportClick = onReportPost
             )
-            1 -> ExploreTab(modifier = Modifier.padding(paddingValues))
+            1 -> ExploreTab(
+                modifier = Modifier.padding(paddingValues),
+                posts = posts,
+                onCategoryClick = { category ->
+                    selectedCategory = category
+                    selectedTab = 0  // Cambiar a pestaña de inicio
+                }
+            )
             2 -> ProfileTab(
                 modifier = Modifier.padding(paddingValues),
                 currentUser = currentUser,
@@ -149,6 +200,8 @@ private fun FeedTab(
     modifier: Modifier = Modifier,
     currentUser: UserEntity,
     posts: List<MockPost>,
+    selectedCategory: String? = null,
+    onClearFilter: () -> Unit = {},
     onLikeClick: (Long) -> Unit = {},
     onCommentClick: (Long) -> Unit = {},
     onReportClick: (Long) -> Unit = {}
@@ -159,19 +212,46 @@ private fun FeedTab(
             .padding(horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        item {
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = "Hola, ${currentUser.fullName} 👋",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold
-            )
-            Text(
-                text = "¿Qué anime estás viendo hoy?",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(modifier = Modifier.height(8.dp))
+        // Mostrar saludo solo cuando NO hay categoría seleccionada
+        if (selectedCategory == null) {
+            item {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "Hola, ${currentUser.fullName} 👋",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = "¿Qué anime estás viendo hoy?",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+        } else {
+            // Mostrar encabezado de categoría cuando está filtrado
+            item {
+                Spacer(modifier = Modifier.height(16.dp))
+                val categoryIcon = when (selectedCategory) {
+                    "Anime" -> "🎬"
+                    "Manga" -> "📚"
+                    "Gaming" -> "🎮"
+                    "General" -> "💬"
+                    else -> "📂"
+                }
+                Text(
+                    text = "$categoryIcon $selectedCategory",
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Text(
+                    text = "${posts.size} publicaciones",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+            }
         }
         
         if (posts.isEmpty()) {
@@ -363,7 +443,17 @@ private fun EmptyStateCard() {
  * Tab de explorar con categorías.
  */
 @Composable
-private fun ExploreTab(modifier: Modifier = Modifier) {
+private fun ExploreTab(
+    modifier: Modifier = Modifier,
+    posts: List<MockPost> = emptyList(),
+    onCategoryClick: (String) -> Unit = {}
+) {
+    // Contar posts por categoría
+    val animeCount = posts.count { it.category == "Anime" }
+    val mangaCount = posts.count { it.category == "Manga" }
+    val gamingCount = posts.count { it.category == "Gaming" }
+    val generalCount = posts.count { it.category == "General" }
+    
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
@@ -383,7 +473,8 @@ private fun ExploreTab(modifier: Modifier = Modifier) {
             CategoryCard(
                 title = "🎬 Anime",
                 description = "Discusiones sobre tus animes favoritos",
-                postsCount = 156
+                postsCount = animeCount,
+                onClick = { onCategoryClick("Anime") }
             )
         }
         
@@ -391,7 +482,8 @@ private fun ExploreTab(modifier: Modifier = Modifier) {
             CategoryCard(
                 title = "📚 Manga",
                 description = "Recomendaciones y reseñas de manga",
-                postsCount = 89
+                postsCount = mangaCount,
+                onClick = { onCategoryClick("Manga") }
             )
         }
         
@@ -399,7 +491,8 @@ private fun ExploreTab(modifier: Modifier = Modifier) {
             CategoryCard(
                 title = "🎮 Gaming",
                 description = "Juegos, reviews y gameplays",
-                postsCount = 234
+                postsCount = gamingCount,
+                onClick = { onCategoryClick("Gaming") }
             )
         }
         
@@ -407,7 +500,8 @@ private fun ExploreTab(modifier: Modifier = Modifier) {
             CategoryCard(
                 title = "💬 General",
                 description = "Conversaciones sobre cultura otaku",
-                postsCount = 421
+                postsCount = generalCount,
+                onClick = { onCategoryClick("General") }
             )
         }
     }
@@ -420,11 +514,12 @@ private fun ExploreTab(modifier: Modifier = Modifier) {
 private fun CategoryCard(
     title: String,
     description: String,
-    postsCount: Int
+    postsCount: Int,
+    onClick: () -> Unit = {}
 ) {
     ElevatedCard(
         modifier = Modifier.fillMaxWidth(),
-        onClick = { }
+        onClick = onClick
     ) {
         Row(
             modifier = Modifier
@@ -586,26 +681,7 @@ private fun ProfileTab(
         item {
             ElevatedCard(
                 modifier = Modifier.fillMaxWidth(),
-                onClick = onEditProfile  // Conectar con la navegación
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(Icons.Filled.Edit, null)
-                    Spacer(modifier = Modifier.width(16.dp))
-                    Text("Editar perfil", modifier = Modifier.weight(1f))
-                    Icon(Icons.Filled.ChevronRight, null)
-                }
-            }
-        }
-        
-        item {
-            ElevatedCard(
-                modifier = Modifier.fillMaxWidth(),
-                onClick = { }
+                onClick = onEditProfile  // Navegar a editar perfil
             ) {
                 Row(
                     modifier = Modifier
@@ -704,7 +780,11 @@ private fun CreatePostDialog(
                     onValueChange = { title = it },
                     label = { Text("Título") },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.7f)
+                    )
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(
@@ -713,7 +793,11 @@ private fun CreatePostDialog(
                     label = { Text("Contenido") },
                     minLines = 3,
                     maxLines = 5,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.7f)
+                    )
                 )
             }
         },
@@ -745,3 +829,4 @@ data class MockPost(
     val likes: Int,
     val comments: Int
 )
+

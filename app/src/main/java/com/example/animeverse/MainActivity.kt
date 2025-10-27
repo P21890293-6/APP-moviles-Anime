@@ -3,10 +3,12 @@ package com.example.animeverse
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -17,6 +19,7 @@ import com.example.animeverse.ui.screen.LoginScreen
 import com.example.animeverse.ui.screen.RegisterScreen
 import com.example.animeverse.ui.screen.AdminDashboard
 import com.example.animeverse.ui.screen.UserHomeScreen
+import com.example.animeverse.ui.screen.SettingsScreen
 import com.example.animeverse.ui.screen.EditProfileScreenVm
 import com.example.animeverse.ui.screen.MockPost
 import com.example.animeverse.data.local.user.isAdmin
@@ -29,6 +32,7 @@ import com.example.animeverse.ui.viewmodel.AuthViewModelFactory
 import com.example.animeverse.ui.components.AppDrawer
 import com.example.animeverse.ui.components.AppTopBar
 import com.example.animeverse.ui.components.drawerItemsForUser
+import com.example.animeverse.data.local.session.SessionManager
 
 /**
  * Activity principal de AnimeVerse.
@@ -68,9 +72,14 @@ class MainActivity : ComponentActivity() {
  */
 @Composable
 fun AnimeVerseApp(authViewModel: AuthViewModel) {
+    val context = LocalContext.current
+    val database = AppDatabase.getInstance(context)
+    val sessionManager = remember { SessionManager(context) }
+    val scope = rememberCoroutineScope()
+    
+    var isCheckingSession by remember { mutableStateOf(true) }
     var currentScreen by remember { mutableStateOf<Screen>(Screen.Login) }
     val loginState by authViewModel.loginState.collectAsState()
-    val scope = rememberCoroutineScope()
     
     // Estado para lista de usuarios (para admin)
     var allUsers by remember { mutableStateOf<List<com.example.animeverse.data.local.user.UserEntity>>(emptyList()) }
@@ -84,8 +93,36 @@ fun AnimeVerseApp(authViewModel: AuthViewModel) {
     // Estado para reportes (admin)
     var allReports by remember { mutableStateOf<List<com.example.animeverse.data.local.post.PostReportEntity>>(emptyList()) }
     
-    val context = LocalContext.current
-    val database = AppDatabase.getInstance(context)
+    // Verificar sesión al iniciar
+    LaunchedEffect(Unit) {
+        val userId = sessionManager.getUserId()
+        if (userId != null) {
+            val user = database.userDao().getUserById(userId)
+            if (user != null) {
+                // Restaurar sesión
+                currentScreen = if (user.isAdmin()) {
+                    Screen.AdminDashboard(user)
+                } else {
+                    Screen.UserHome(user)
+                }
+            } else {
+                // Usuario no encontrado, limpiar sesión
+                sessionManager.clearSession()
+            }
+        }
+        isCheckingSession = false
+    }
+    
+    // Mostrar pantalla de carga mientras se verifica la sesión
+    if (isCheckingSession) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator()
+        }
+        return
+    }
     
     // Estado del drawer (patrón del profesor)
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
@@ -97,6 +134,7 @@ fun AnimeVerseApp(authViewModel: AuthViewModel) {
     val currentUser = when (val screen = currentScreen) {
         is Screen.AdminDashboard -> screen.user
         is Screen.UserHome -> screen.user
+        is Screen.Settings -> screen.user
         is Screen.EditProfile -> screen.user
         else -> null
     }
@@ -162,7 +200,16 @@ fun AnimeVerseApp(authViewModel: AuthViewModel) {
         }
     }
     
+    val goSettings: () -> Unit = {
+        if (currentUser != null) {
+            currentScreen = Screen.Settings(currentUser)
+        }
+    }
+    
     val onLogout: () -> Unit = {
+        // Limpiar sesión guardada
+        sessionManager.clearSession()
+        
         authViewModel.clearLoginResult()
         scope.launch { drawerState.close() }
         currentScreen = Screen.Login
@@ -205,20 +252,28 @@ fun AnimeVerseApp(authViewModel: AuthViewModel) {
             ) {
             Scaffold(
                 topBar = {
-                AppTopBar(
-                    title = when (currentScreen) {
-                        is Screen.AdminDashboard -> "Panel de Administrador"
-                        is Screen.UserHome -> "AnimeVerse"
-                        is Screen.EditProfile -> "Editar Perfil"
-                        Screen.Login -> "Iniciar Sesión"
-                        Screen.Register -> "Registro"
-                        Screen.Home -> "AnimeVerse"
-                    },
-                        currentUser = currentUser,
-                        onOpenDrawer = { scope.launch { drawerState.open() } }
-                    )
+                    // Ocultar la barra superior para pantallas que tienen su propia barra
+                    if (currentScreen !is Screen.UserHome && 
+                        currentScreen !is Screen.Settings && 
+                        currentScreen !is Screen.EditProfile) {
+                        AppTopBar(
+                            title = when (currentScreen) {
+                                is Screen.AdminDashboard -> "Panel de Administrador"
+                                Screen.Login -> "Iniciar Sesión"
+                                Screen.Register -> "Registro"
+                                Screen.Home -> "AnimeVerse"
+                                else -> "AnimeVerse"
+                            },
+                            currentUser = currentUser,
+                            onOpenDrawer = { scope.launch { drawerState.open() } }
+                        )
+                    }
                 }
-            ) { _ ->
+            ) { paddingValues ->
+                // El paddingValues se ignora porque las pantallas internas manejan su propio padding
+                @Suppress("UNUSED_EXPRESSION")
+                paddingValues
+                
                 when (val screen = currentScreen) {
                     is Screen.AdminDashboard -> AdminDashboard(
                         currentUser = screen.user,
@@ -296,7 +351,8 @@ fun AnimeVerseApp(authViewModel: AuthViewModel) {
                         currentUser = screen.user,
                         posts = mockPosts,
                         onLogout = onLogout,
-                        onViewProfile = goEditProfile,
+                        onViewProfile = goSettings,
+                        onOpenDrawer = { scope.launch { drawerState.open() } },
                         onLikePost = { postId ->
                             scope.launch {
                                 val userId = screen.user.id
@@ -406,6 +462,43 @@ fun AnimeVerseApp(authViewModel: AuthViewModel) {
                             }
                         }
                     )
+                    is Screen.Settings -> {
+                        SettingsScreen(
+                            currentUser = screen.user,
+                            onBackClick = {
+                                // Volver a UserHome
+                                currentScreen = Screen.UserHome(screen.user)
+                            },
+                            onEditProfile = {
+                                // Ir a editar perfil
+                                currentScreen = Screen.EditProfile(screen.user)
+                            },
+                            onChangePassword = {
+                                // TODO: Implementar cambio de contraseña
+                                android.widget.Toast.makeText(
+                                    context,
+                                    "Función próximamente disponible",
+                                    android.widget.Toast.LENGTH_SHORT
+                                ).show()
+                            },
+                            onPrivacySettings = {
+                                // TODO: Implementar configuración de privacidad
+                                android.widget.Toast.makeText(
+                                    context,
+                                    "Función próximamente disponible",
+                                    android.widget.Toast.LENGTH_SHORT
+                                ).show()
+                            },
+                            onAbout = {
+                                // TODO: Implementar acerca de
+                                android.widget.Toast.makeText(
+                                    context,
+                                    "AnimeVerse v1.0.0",
+                                    android.widget.Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                        )
+                    }
                     is Screen.EditProfile -> {
                         // Crear ViewModel para editar perfil
                         val editProfileViewModel: EditProfileViewModel = viewModel(
@@ -416,20 +509,20 @@ fun AnimeVerseApp(authViewModel: AuthViewModel) {
                             vm = editProfileViewModel,
                             currentUser = screen.user,
                             onBackClick = {
-                                // Volver a UserHome con datos actualizados
+                                // Volver a Settings con datos actualizados
                                 scope.launch {
                                     val updatedUser = database.userDao().getUserById(screen.user.id)
                                     if (updatedUser != null) {
-                                        currentScreen = Screen.UserHome(updatedUser)
+                                        currentScreen = Screen.Settings(updatedUser)
                                     }
                                 }
                             },
                             onProfileUpdated = {
-                                // Recargar usuario con datos actualizados
+                                // Recargar usuario y volver a Settings
                                 scope.launch {
                                     val updatedUser = database.userDao().getUserById(screen.user.id)
                                     if (updatedUser != null) {
-                                        currentScreen = Screen.UserHome(updatedUser)
+                                        currentScreen = Screen.Settings(updatedUser)
                                     }
                                 }
                             }
@@ -454,6 +547,9 @@ fun AnimeVerseApp(authViewModel: AuthViewModel) {
                         // Navegar según el rol del usuario
                         val user = loginState.loggedInUser
                         if (user != null) {
+                            // Guardar sesión
+                            sessionManager.saveSession(user.id)
+                            
                             currentScreen = if (user.isAdmin()) {
                                 Screen.AdminDashboard(user)
                             } else {
@@ -494,6 +590,7 @@ sealed class Screen {
     object Home : Screen()
     data class AdminDashboard(val user: com.example.animeverse.data.local.user.UserEntity) : Screen()
     data class UserHome(val user: com.example.animeverse.data.local.user.UserEntity) : Screen()
+    data class Settings(val user: com.example.animeverse.data.local.user.UserEntity) : Screen()
     data class EditProfile(val user: com.example.animeverse.data.local.user.UserEntity) : Screen()
 }
 

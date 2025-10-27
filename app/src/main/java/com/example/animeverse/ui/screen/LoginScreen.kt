@@ -41,13 +41,11 @@ fun LoginScreen(
             onLoginSuccess()
         }
     }
-    
-    val bg = MaterialTheme.colorScheme.secondaryContainer
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(bg)
+            .background(MaterialTheme.colorScheme.background)
             .padding(16.dp),
         contentAlignment = Alignment.Center
     ) {
@@ -73,7 +71,7 @@ fun LoginScreen(
                 text = "Inicia sesión para continuar",
                 style = MaterialTheme.typography.bodyMedium,
                 textAlign = TextAlign.Center,
-                color = MaterialTheme.colorScheme.onSecondaryContainer
+                color = MaterialTheme.colorScheme.onBackground
             )
             
             Spacer(Modifier.height(32.dp))
@@ -87,6 +85,12 @@ fun LoginScreen(
                 isError = state.emailError != null,
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Email
+                ),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                    focusedContainerColor = MaterialTheme.colorScheme.surface,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surface
                 ),
                 modifier = Modifier.fillMaxWidth()
             )
@@ -130,6 +134,12 @@ fun LoginScreen(
                 isError = state.passwordError != null,
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Password
+                ),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                    focusedContainerColor = MaterialTheme.colorScheme.surface,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surface
                 ),
                 modifier = Modifier.fillMaxWidth()
             )
@@ -192,7 +202,7 @@ fun LoginScreen(
             Text(
                 text = "Los datos se validan contra la base de datos SQLite",
                 style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.6f),
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
                 textAlign = TextAlign.Center
             )
         }

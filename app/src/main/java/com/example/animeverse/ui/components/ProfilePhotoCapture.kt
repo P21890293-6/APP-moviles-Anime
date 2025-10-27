@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -13,6 +14,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -49,21 +51,9 @@ fun ProfilePhotoCapture(
     
     // Estado para dialog de permisos
     var showPermissionDialog by remember { mutableStateOf(false) }
+    var showGalleryPermissionDialog by remember { mutableStateOf(false) }
     
-    // Launcher para solicitar permiso de cámara
-    val permissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission()
-    ) { isGranted ->
-        if (isGranted) {
-            // Permiso concedido, abrir cámara
-            Toast.makeText(context, "Permiso de cámara concedido", Toast.LENGTH_SHORT).show()
-        } else {
-            // Permiso denegado
-            Toast.makeText(context, "Permiso de cámara denegado", Toast.LENGTH_SHORT).show()
-        }
-    }
-    
-    // Launcher para la cámara (TakePicture)
+    // Launcher para la cámara (TakePicture) - DEBE IR PRIMERO
     val takePictureLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.TakePicture()
     ) { success ->
@@ -75,6 +65,49 @@ fun ProfilePhotoCapture(
             // Usuario canceló o error
             pendingCaptureUri = null
             Toast.makeText(context, "Captura cancelada", Toast.LENGTH_SHORT).show()
+        }
+    }
+    
+    // Launcher para seleccionar imagen de galería - DEBE IR SEGUNDO
+    val pickImageLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            // Imagen seleccionada exitosamente
+            onPhotoChange(uri.toString())
+            Toast.makeText(context, "Foto de perfil seleccionada", Toast.LENGTH_SHORT).show()
+        } else {
+            // Usuario canceló
+            Toast.makeText(context, "Selección cancelada", Toast.LENGTH_SHORT).show()
+        }
+    }
+    
+    // Launcher para solicitar permiso de cámara - USA takePictureLauncher
+    val cameraPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            // Permiso concedido, abrir cámara
+            val file = createTempImageFile(context)
+            val uri = getImageUriForFile(context, file)
+            pendingCaptureUri = uri
+            takePictureLauncher.launch(uri)
+        } else {
+            // Permiso denegado
+            Toast.makeText(context, "Permiso de cámara denegado", Toast.LENGTH_SHORT).show()
+        }
+    }
+    
+    // Launcher para solicitar permiso de galería - USA pickImageLauncher
+    val galleryPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            // Permiso concedido, abrir galería
+            pickImageLauncher.launch("image/*")
+        } else {
+            // Permiso denegado
+            Toast.makeText(context, "Permiso de galería denegado", Toast.LENGTH_SHORT).show()
         }
     }
     
@@ -134,8 +167,9 @@ fun ProfilePhotoCapture(
             // Botones de acción centrados
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center
+                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)
             ) {
+                // Botón tomar foto
                 FilledTonalButton(
                     onClick = {
                         // Verificar permiso de cámara
@@ -163,28 +197,61 @@ fun ProfilePhotoCapture(
                         modifier = Modifier.size(18.dp)
                     )
                     Spacer(Modifier.width(4.dp))
-                    Text(
-                        if (photoUri.isNullOrEmpty()) "Tomar foto"
-                        else "Cambiar"
-                    )
+                    Text("Tomar foto")
                 }
                 
-                // Botón eliminar (solo si hay foto)
-                if (!photoUri.isNullOrEmpty()) {
-                    OutlinedButton(
-                        onClick = {
-                            onPhotoChange(null)
-                            Toast.makeText(context, "Foto eliminada", Toast.LENGTH_SHORT).show()
+                // Botón seleccionar de galería
+                FilledTonalButton(
+                    onClick = {
+                        // Determinar qué permiso necesitamos según la versión de Android
+                        val permission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                            Manifest.permission.READ_MEDIA_IMAGES
+                        } else {
+                            Manifest.permission.READ_EXTERNAL_STORAGE
                         }
-                    ) {
-                        Text("Eliminar")
+                        
+                        // Verificar permiso de galería
+                        when {
+                            ContextCompat.checkSelfPermission(
+                                context,
+                                permission
+                            ) == PackageManager.PERMISSION_GRANTED -> {
+                                // Permiso ya concedido, abrir galería
+                                pickImageLauncher.launch("image/*")
+                            }
+                            else -> {
+                                // Solicitar permiso
+                                showGalleryPermissionDialog = true
+                            }
+                        }
                     }
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.PhotoLibrary,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(Modifier.width(4.dp))
+                    Text("Galería")
+                }
+            }
+            
+            // Botón eliminar (solo si hay foto)
+            if (!photoUri.isNullOrEmpty()) {
+                Spacer(Modifier.height(8.dp))
+                OutlinedButton(
+                    onClick = {
+                        onPhotoChange(null)
+                        Toast.makeText(context, "Foto eliminada", Toast.LENGTH_SHORT).show()
+                    }
+                ) {
+                    Text("Eliminar foto")
                 }
             }
         }
     }
     
-    // Dialog para explicar el permiso
+    // Dialog para explicar el permiso de cámara
     if (showPermissionDialog) {
         AlertDialog(
             onDismissRequest = { showPermissionDialog = false },
@@ -195,13 +262,42 @@ fun ProfilePhotoCapture(
             confirmButton = {
                 Button(onClick = {
                     showPermissionDialog = false
-                    permissionLauncher.launch(Manifest.permission.CAMERA)
+                    cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
                 }) {
                     Text("Permitir")
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showPermissionDialog = false }) {
+                    Text("Cancelar")
+                }
+            }
+        )
+    }
+    
+    // Dialog para explicar el permiso de galería
+    if (showGalleryPermissionDialog) {
+        AlertDialog(
+            onDismissRequest = { showGalleryPermissionDialog = false },
+            title = { Text("Permiso de Galería") },
+            text = { 
+                Text("AnimeVerse necesita acceso a tu galería para seleccionar fotos de perfil. ¿Deseas conceder este permiso?") 
+            },
+            confirmButton = {
+                Button(onClick = {
+                    showGalleryPermissionDialog = false
+                    val permission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        Manifest.permission.READ_MEDIA_IMAGES
+                    } else {
+                        Manifest.permission.READ_EXTERNAL_STORAGE
+                    }
+                    galleryPermissionLauncher.launch(permission)
+                }) {
+                    Text("Permitir")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showGalleryPermissionDialog = false }) {
                     Text("Cancelar")
                 }
             }
